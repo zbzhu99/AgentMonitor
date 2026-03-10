@@ -64,6 +64,9 @@ export const fr: Record<string, string> = {
     'create.claudeMdFound': 'CLAUDE.md trouvé dans ce répertoire',
     'create.loadExisting': 'Charger le CLAUDE.md existant',
     'create.keepCustom': 'Garder la personnalisation',
+    'create.addSuggestion': 'Ajouter une suggestion',
+    'create.removeSuggestion': 'Supprimer la suggestion',
+    'create.suggestionPlaceholder': 'Tapez une suggestion de prompt...',
 
     // Agent Chat
     'chat.editClaudeMd': 'Modifier CLAUDE.md',

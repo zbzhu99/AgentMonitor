@@ -64,6 +64,9 @@ export const ja: Record<string, string> = {
     'create.claudeMdFound': 'このディレクトリにCLAUDE.mdが見つかりました',
     'create.loadExisting': '既存のCLAUDE.mdを読み込む',
     'create.keepCustom': 'カスタムを保持',
+    'create.addSuggestion': '提案を追加',
+    'create.removeSuggestion': '提案を削除',
+    'create.suggestionPlaceholder': 'プロンプト提案を入力...',
 
     // Agent Chat
     'chat.editClaudeMd': 'CLAUDE.mdを編集',

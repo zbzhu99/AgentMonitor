@@ -64,6 +64,9 @@ export const zh: Record<string, string> = {
     'create.claudeMdFound': '在此目录中发现 CLAUDE.md',
     'create.loadExisting': '加载已有的 CLAUDE.md',
     'create.keepCustom': '保留自定义',
+    'create.addSuggestion': '添加建议',
+    'create.removeSuggestion': '删除建议',
+    'create.suggestionPlaceholder': '输入提示建议...',
 
     // Agent Chat
     'chat.editClaudeMd': '编辑 CLAUDE.md',

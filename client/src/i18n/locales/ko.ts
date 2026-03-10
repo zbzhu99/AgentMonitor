@@ -64,6 +64,9 @@ export const ko: Record<string, string> = {
     'create.claudeMdFound': '이 디렉토리에서 CLAUDE.md를 발견했습니다',
     'create.loadExisting': '기존 CLAUDE.md 불러오기',
     'create.keepCustom': '사용자 정의 유지',
+    'create.addSuggestion': '제안 추가',
+    'create.removeSuggestion': '제안 삭제',
+    'create.suggestionPlaceholder': '프롬프트 제안 입력...',
 
     // Agent Chat
     'chat.editClaudeMd': 'CLAUDE.md 편집',

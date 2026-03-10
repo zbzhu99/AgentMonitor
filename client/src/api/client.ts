@@ -98,6 +98,7 @@ export interface MetaAgentConfig {
 
 export interface ServerSettings {
   agentRetentionMs: number;
+  promptSuggestions: string[];
 }
 
 export const api = {

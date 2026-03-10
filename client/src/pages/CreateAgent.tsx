@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type AgentProvider, type Template, type SessionInfo, type DirListing } from '../api/client';
+import { api, type AgentProvider, type Template, type SessionInfo, type DirListing, type ServerSettings } from '../api/client';
 import { useTranslation } from '../i18n';
 
 export function CreateAgent() {
@@ -33,14 +33,34 @@ export function CreateAgent() {
   const [showDirBrowser, setShowDirBrowser] = useState(false);
   const [claudeMdPrompt, setClaudeMdPrompt] = useState<{ content: string } | null>(null);
 
-  // Templates and sessions
+  // Templates, sessions, and prompt suggestions
   const [templates, setTemplates] = useState<Template[]>([]);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [promptSuggestions, setPromptSuggestions] = useState<string[]>([]);
+  const [newSuggestion, setNewSuggestion] = useState('');
+  const [showAddSuggestion, setShowAddSuggestion] = useState(false);
 
   useEffect(() => {
     api.getTemplates().then(setTemplates).catch(() => {});
     api.getSessions().then(setSessions).catch(() => {});
+    api.getSettings().then((s) => setPromptSuggestions(s.promptSuggestions || [])).catch(() => {});
   }, []);
+
+  const addSuggestion = async () => {
+    const text = newSuggestion.trim();
+    if (!text) return;
+    const updated = [...promptSuggestions, text];
+    setPromptSuggestions(updated);
+    setNewSuggestion('');
+    setShowAddSuggestion(false);
+    try { await api.updateSettings({ promptSuggestions: updated }); } catch {}
+  };
+
+  const removeSuggestion = async (index: number) => {
+    const updated = promptSuggestions.filter((_, i) => i !== index);
+    setPromptSuggestions(updated);
+    try { await api.updateSettings({ promptSuggestions: updated }); } catch {}
+  };
 
   const browseTo = async (path?: string) => {
     try {
@@ -206,6 +226,73 @@ export function CreateAgent() {
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={t('create.promptPlaceholder')}
         />
+        {promptSuggestions.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {promptSuggestions.map((s, i) => (
+              <span
+                key={i}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '4px 10px', fontSize: 12, borderRadius: 12,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  cursor: 'pointer', maxWidth: '100%',
+                }}
+              >
+                <span
+                  onClick={() => setPrompt(prev => prev ? prev + '\n' + s : s)}
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={s}
+                >
+                  {s}
+                </span>
+                <span
+                  onClick={(e) => { e.stopPropagation(); removeSuggestion(i); }}
+                  style={{ cursor: 'pointer', opacity: 0.5, fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+                  title={t('create.removeSuggestion')}
+                >&times;</span>
+              </span>
+            ))}
+            {!showAddSuggestion && (
+              <span
+                onClick={() => setShowAddSuggestion(true)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  padding: '4px 10px', fontSize: 12, borderRadius: 12,
+                  background: 'var(--bg-card)', border: '1px dashed var(--border)',
+                  cursor: 'pointer', opacity: 0.7,
+                }}
+                title={t('create.addSuggestion')}
+              >+ {t('create.addSuggestion')}</span>
+            )}
+          </div>
+        )}
+        {promptSuggestions.length === 0 && (
+          <div style={{ marginTop: 8 }}>
+            <span
+              onClick={() => setShowAddSuggestion(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center',
+                padding: '4px 10px', fontSize: 12, borderRadius: 12,
+                background: 'var(--bg-card)', border: '1px dashed var(--border)',
+                cursor: 'pointer', opacity: 0.7,
+              }}
+            >+ {t('create.addSuggestion')}</span>
+          </div>
+        )}
+        {showAddSuggestion && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <input
+              value={newSuggestion}
+              onChange={(e) => setNewSuggestion(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addSuggestion()}
+              placeholder={t('create.suggestionPlaceholder')}
+              style={{ flex: 1, fontSize: 12 }}
+              autoFocus
+            />
+            <button className="btn btn-sm" onClick={addSuggestion}>{t('common.save')}</button>
+            <button className="btn btn-sm btn-outline" onClick={() => { setShowAddSuggestion(false); setNewSuggestion(''); }}>{t('common.cancel')}</button>
+          </div>
+        )}
       </div>
 
       <div className="form-group">
