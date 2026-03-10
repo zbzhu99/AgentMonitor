@@ -171,7 +171,7 @@ export function CreateAgent() {
             onChange={(e) => setDirectory(e.target.value)}
             placeholder={t('create.workingDirPlaceholder')}
           />
-          <button className="btn btn-outline" onClick={() => browseTo(directory || undefined)}>
+          <button className="btn btn-outline" onClick={() => showDirBrowser ? setShowDirBrowser(false) : browseTo(directory || undefined)}>
             {t('common.browse')}
           </button>
         </div>
