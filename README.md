@@ -45,6 +45,20 @@ All channels can be enabled simultaneously — configure an admin email, WhatsAp
 
 > See the [Notifications Guide](docs/guide/notifications.md) for detailed setup instructions.
 
+### Remote Access via Relay Server
+- **Access from anywhere** — Manage agents from your phone, laptop, or any device through a public relay server
+- **Secure WebSocket tunnel** — The agent machine connects outbound to the relay; no inbound ports needed
+- **Batch remote agents** — Run and monitor dozens of agents on a powerful remote machine while controlling them from any lightweight device
+- **Password-protected dashboard** — JWT-based authentication with 24-hour session expiry
+- **Auto-reconnect** — Tunnel reconnects automatically if the connection drops (exponential backoff)
+- **Zero overhead locally** — When relay is not configured, the server runs in local-only mode with no extra cost
+
+```
+Phone / Laptop ──HTTP──▶ Public Server (Relay :3457) ◀──WS tunnel── Agent Machine (:3456)
+```
+
+> See the [Remote Access Guide](docs/guide/remote-access.md) for setup instructions.
+
 ### Template & Instruction Management
 - **CLAUDE.md templates** — Create reusable instruction sets and load them when spawning agents
 - **Auto-detect CLAUDE.md** — When selecting a project directory, automatically detects existing CLAUDE.md and offers to load it

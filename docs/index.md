@@ -20,6 +20,8 @@ features:
     details: Define sequential and parallel workflows. The Meta Agent Manager automates agent provisioning, monitoring, and cleanup.
   - title: Interactive Web Terminal
     details: Full chat interface with 25+ slash commands, Double-Esc interrupt, live CLAUDE.md editing, and session resume.
+  - title: Remote Access via Relay
+    details: Manage batch agents on a powerful remote machine from any device — phone, laptop, or tablet — through a secure WebSocket tunnel with auto-reconnect.
   - title: Git Worktree Isolation
     details: Every agent runs in its own branch — multiple agents can work in the same repository without conflicts.
   - title: 7-Language i18n
