@@ -18,7 +18,12 @@ Each agent is displayed as a card showing:
 - **+ New Agent**: Navigate to the agent creation form
 - **Stop All**: Stop all running agents at once
 - **Delete**: Remove a stopped agent (click the X button)
+- **Settings**: Configure auto-delete retention for stopped agents
+
+## Auto-Delete Expired Agents
+
+Stopped agents can be automatically cleaned up after a configurable retention period. Open **Settings** from the dashboard to set the retention time in hours (default: 24 hours). Set to 0 to keep agents forever. The server checks for expired agents every 60 seconds.
 
 ## Real-time Updates
 
-The dashboard uses Socket.IO for live updates. Agent status changes, new messages, and cost updates appear instantly without refreshing the page.
+The dashboard uses Socket.IO for live updates. Agent status changes, new messages, and cost updates stream instantly without refreshing the page via `agent:update` (per-agent room events) and `agent:snapshot` (broadcast dashboard updates).

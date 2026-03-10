@@ -18,10 +18,11 @@
 - **Git worktree isolation** — Every agent operates in its own branch, preventing conflicts when multiple agents work in the same repository
 
 ### Real-Time Monitoring & Interaction
-- **Live streaming** — Watch agent output in real-time over WebSocket
+- **Live streaming** — Watch agent output in real-time over WebSocket (works locally and through relay)
 - **Web terminal** — Full chat interface with 25+ slash commands matching CLI behavior
 - **Cost & token tracking** — Per-agent cost (Claude) and token usage (Codex) displayed in real time
 - **Double-Esc interrupt** — Press Escape twice to send SIGINT to any running agent
+- **Auto-delete expired agents** — Configurable retention period for stopped agents (default 24h, adjustable in Settings)
 
 ### Notifications — Email, WhatsApp & Slack
 Stay informed wherever you are. Agent Monitor sends instant notifications when agents need human attention.
@@ -162,11 +163,12 @@ All configuration is via environment variables. Copy `.env.example` to `.env` an
 
 1. Click **"+ New Agent"** on the Dashboard
 2. Select **Provider** — Claude Code or Codex
-3. Set **Name**, **Working Directory**, and **Prompt**
-4. Configure **Flags** (e.g., `--dangerously-skip-permissions`)
-5. Optionally load a **CLAUDE.md template**
-6. Enter an **Admin Email**, **WhatsApp Phone**, and/or **Slack Webhook URL** for notifications
-7. Click **Create Agent**
+3. Set **Name**, **Working Directory** (use Browse to pick a directory), and **Prompt**
+4. If the selected directory contains a `CLAUDE.md`, you'll be prompted to load it automatically
+5. Configure **Flags** (e.g., `--dangerously-skip-permissions`, `--chrome`, `--permission-mode`)
+6. Optionally load a **CLAUDE.md template** or write custom instructions
+7. Enter an **Admin Email**, **WhatsApp Phone**, and/or **Slack Webhook URL** for notifications
+8. Click **Create Agent**
 
 ### Dashboard
 
@@ -228,12 +230,20 @@ Create, edit, and reuse CLAUDE.md instruction templates across agents.
 | PUT | `/api/templates/:id` | Update template |
 | DELETE | `/api/templates/:id` | Delete template |
 
+### Settings
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/settings` | Get server settings (agent retention, etc.) |
+| PUT | `/api/settings` | Update server settings |
+
 ### Other
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/sessions` | List previous Claude sessions |
 | GET | `/api/directories?path=/home` | Browse server directories |
+| GET | `/api/directories/claude-md?path=/project` | Check if CLAUDE.md exists in a directory |
 | GET | `/api/health` | Health check |
 
 ### Socket.IO Events
@@ -244,7 +254,9 @@ Create, edit, and reuse CLAUDE.md instruction templates across agents.
 | `agent:leave` | Client → Server | Unsubscribe |
 | `agent:send` | Client → Server | Send message |
 | `agent:interrupt` | Client → Server | Send interrupt |
-| `agent:message` | Server → Client | Agent output |
+| `agent:message` | Server → Client | Agent output (legacy) |
+| `agent:update` | Server → Client | Full agent snapshot (real-time streaming) |
+| `agent:snapshot` | Server → Client | Dashboard broadcast update |
 | `agent:status` | Server → Client | Status change |
 | `task:update` | Server → Client | Pipeline task updated |
 | `pipeline:complete` | Server → Client | Pipeline complete |
@@ -283,7 +295,7 @@ The relay supports **password-based login** via `RELAY_PASSWORD` to protect the 
 | | Claude Code | Codex |
 |---|---|---|
 | **Binary** | `claude` | `codex` |
-| **Flags** | `--dangerously-skip-permissions`, `--resume`, `--model` | `--dangerously-bypass-approvals-and-sandbox`, `--full-auto`, `--model` |
+| **Flags** | `--dangerously-skip-permissions`, `--permission-mode`, `--chrome`, `--max-budget-usd`, `--allowedTools`, `--disallowedTools`, `--add-dir`, `--mcp-config`, `--resume`, `--model` | `--dangerously-bypass-approvals-and-sandbox`, `--full-auto`, `--model` |
 | **Tracking** | Cost (USD) | Token usage |
 
 ---
