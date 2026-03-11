@@ -130,14 +130,30 @@ export class AgentManager extends EventEmitter {
     const agent = this.store.getAgent(agentId);
     if (!agent) return;
 
+    const prevMsgCount = agent.messages.length;
+
     if (provider === 'codex') {
       this.handleCodexMessage(agent, msg);
     } else {
       this.handleClaudeMessage(agent, msg);
     }
 
-    // Emit raw message (kept for backward compat) + full agent snapshot for streaming
+    // Emit raw message (kept for backward compat)
     this.emit('agent:message', agentId, msg);
+
+    // Emit lightweight delta with only new messages + metadata (efficient for tunnel)
+    const newMessages = agent.messages.slice(prevMsgCount);
+    if (newMessages.length > 0) {
+      this.emit('agent:delta', agentId, {
+        messages: newMessages,
+        status: agent.status,
+        costUsd: agent.costUsd,
+        tokenUsage: agent.tokenUsage,
+        lastActivity: agent.lastActivity,
+      });
+    }
+
+    // Full snapshot for dashboard cards (less frequent)
     const updated = this.store.getAgent(agentId);
     if (updated) {
       this.emit('agent:update', agentId, updated);
@@ -327,6 +343,8 @@ export class AgentManager extends EventEmitter {
         });
         agent.lastActivity = Date.now();
         this.store.saveAgent(agent);
+        // Emit full snapshot so chat UI updates immediately with user message
+        this.emit('agent:update', agentId, agent);
       }
       proc.sendMessage(text);
       this.emit('agent:message', agentId, {

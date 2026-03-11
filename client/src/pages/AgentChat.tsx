@@ -75,38 +75,53 @@ export function AgentChat() {
     joinAgent(id);
     const socket = getSocket();
 
-    // Use agent:update for real-time streaming (full agent snapshot, no HTTP needed)
-    let hasUpdate = false;
+    // Primary: incremental delta (lightweight, only new messages + metadata)
+    const onDelta = (data: { agentId: string; delta: { messages: Agent['messages']; status: string; costUsd?: number; tokenUsage?: Agent['tokenUsage']; lastActivity: number } }) => {
+      if (data.agentId !== id) return;
+      setAgent(prev => {
+        if (!prev) return prev;
+        const existingIds = new Set(prev.messages.map(m => m.id));
+        const newMsgs = data.delta.messages.filter(m => !existingIds.has(m.id));
+        return {
+          ...prev,
+          messages: [...prev.messages, ...newMsgs],
+          status: data.delta.status as Agent['status'],
+          costUsd: data.delta.costUsd ?? prev.costUsd,
+          tokenUsage: data.delta.tokenUsage ?? prev.tokenUsage,
+          lastActivity: data.delta.lastActivity,
+        };
+      });
+    };
+
+    // Full snapshot (for status changes, initial load, dashboard sync)
     const onUpdate = (data: { agentId: string; agent: Agent }) => {
       if (data.agentId === id && data.agent) {
-        hasUpdate = true;
         setAgent(data.agent);
       }
     };
 
-    // Legacy fallback: only re-fetch if agent:update isn't available
-    const onMessage = (data: { agentId: string }) => {
-      if (!hasUpdate && data.agentId === id) fetchAgent();
-    };
-    const onStatus = (data: { agentId: string }) => {
-      if (!hasUpdate && data.agentId === id) fetchAgent();
+    // Status change
+    const onStatus = (data: { agentId: string; status: string }) => {
+      if (data.agentId === id) {
+        setAgent(prev => prev ? { ...prev, status: data.status as Agent['status'] } : prev);
+      }
     };
 
+    socket.on('agent:delta', onDelta);
     socket.on('agent:update', onUpdate);
-    socket.on('agent:message', onMessage);
     socket.on('agent:status', onStatus);
 
     return () => {
       leaveAgent(id);
+      socket.off('agent:delta', onDelta);
       socket.off('agent:update', onUpdate);
-      socket.off('agent:message', onMessage);
       socket.off('agent:status', onStatus);
     };
   }, [id, fetchAgent]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [agent?.messages]);
+  }, [agent?.messages?.length]);
 
   // Double-Esc handler
   useEffect(() => {

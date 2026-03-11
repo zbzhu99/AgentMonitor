@@ -346,10 +346,8 @@ export function CreateAgent() {
             <label>--permission-mode</label>
             <select value={permissionMode} onChange={(e) => setPermissionMode(e.target.value)}>
               <option value="">Default</option>
-              <option value="default">default</option>
               <option value="acceptEdits">acceptEdits</option>
               <option value="bypassPermissions">bypassPermissions</option>
-              <option value="dontAsk">dontAsk</option>
               <option value="plan">plan</option>
             </select>
           </div>

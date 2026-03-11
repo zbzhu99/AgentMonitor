@@ -35,6 +35,16 @@ export function setupTunnelBridge(
     });
   });
 
+  // Incremental message delta → room-targeted for efficient chat streaming
+  manager.on('agent:delta', (agentId: string, delta: unknown) => {
+    tunnel.send({
+      type: 'socket:s2c:room',
+      event: 'agent:delta',
+      room: `agent:${agentId}`,
+      args: [{ agentId, delta }],
+    });
+  });
+
   // Full agent snapshot → room-targeted for chat streaming
   manager.on('agent:update', (agentId: string, agent: unknown) => {
     tunnel.send({

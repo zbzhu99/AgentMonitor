@@ -11,6 +11,11 @@ export function setupSocketHandlers(io: Server, manager: AgentManager): void {
     io.emit('agent:status', { agentId, status });
   });
 
+  // Incremental message delta for efficient real-time chat streaming
+  manager.on('agent:delta', (agentId: string, delta: unknown) => {
+    io.to(`agent:${agentId}`).emit('agent:delta', { agentId, delta });
+  });
+
   // Full agent snapshot for real-time streaming (no HTTP re-fetch needed)
   manager.on('agent:update', (agentId: string, agent: unknown) => {
     io.to(`agent:${agentId}`).emit('agent:update', { agentId, agent });
