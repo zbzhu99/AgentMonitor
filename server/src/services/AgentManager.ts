@@ -90,6 +90,10 @@ export class AgentManager extends EventEmitter {
       this.handleStreamMessage(agent.id, msg, agent.config.provider);
     });
 
+    proc.on('terminal', (chunk: { stream: string; data: string }) => {
+      this.emit('agent:terminal', agent.id, chunk);
+    });
+
     proc.on('stderr', (text: string) => {
       console.error(`[Agent ${agent.id}] stderr: ${text}`);
       // Store stderr in messages for debugging

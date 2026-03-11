@@ -21,6 +21,7 @@ A web dashboard to run, monitor, and manage **Claude Code** and **Codex** agents
 
 ### Real-Time Monitoring & Interaction
 - **Live streaming** — Watch agent output in real-time over WebSocket (works locally and through relay), with automatic polling fallback
+- **Remote terminal attachment** — Toggle a live embedded terminal (xterm.js) to see raw CLI output with full ANSI color rendering, just like attaching to the agent's terminal session
 - **Web terminal** — Full chat interface with 25+ slash commands matching CLI behavior
 - **Session resume** — Send a message to a stopped agent to automatically restart it with `--resume`, continuing the conversation with full history
 - **Clone agent** — Duplicate an existing agent's configuration to quickly create a new one with the same settings

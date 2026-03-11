@@ -537,6 +537,25 @@ body {
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* Terminal attachment view */
+.terminal-view {
+  flex: 1;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #0d1117;
+  padding: 4px;
+  min-height: 0;
+}
+
+.terminal-view .xterm {
+  height: 100%;
+  padding: 8px;
+}
+
+.terminal-view .xterm-viewport {
+  border-radius: var(--radius);
+}
+
 .chat-input-area {
   display: flex;
   gap: 8px;

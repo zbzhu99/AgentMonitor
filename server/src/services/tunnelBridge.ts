@@ -71,6 +71,16 @@ export function setupTunnelBridge(
     });
   });
 
+  // Raw terminal output for live terminal attachment
+  manager.on('agent:terminal', (agentId: string, chunk: unknown) => {
+    tunnel.send({
+      type: 'socket:s2c:room',
+      event: 'agent:terminal',
+      room: `agent:${agentId}`,
+      args: [{ agentId, chunk }],
+    });
+  });
+
   // MetaAgent task updates → broadcast
   metaAgent.on('task:update', (task: unknown) => {
     tunnel.send({

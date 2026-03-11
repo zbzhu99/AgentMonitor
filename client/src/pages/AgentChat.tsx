@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api, type Agent } from '../api/client';
 import { getSocket, joinAgent, leaveAgent } from '../api/socket';
 import { useTranslation } from '../i18n';
+import { TerminalView } from '../components/TerminalView';
 
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -25,6 +26,7 @@ export function AgentChat() {
   const [localMessages, setLocalMessages] = useState<Array<{ id: string; role: string; content: string }>>([]);
   const [inputRequired, setInputRequired] = useState<{ prompt: string; choices?: string[] } | null>(null);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [showTerminal, setShowTerminal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastEscRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -589,6 +591,18 @@ export function AgentChat() {
           >
             {t('chat.editClaudeMd')}
           </button>
+          <button
+            className={`btn btn-sm ${showTerminal ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setShowTerminal(prev => !prev)}
+            title="Toggle live terminal"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4 }}>
+              <rect x="1" y="2" width="14" height="11" rx="1.5" />
+              <polyline points="4,7 6,5 4,3" transform="translate(0,2)" />
+              <line x1="7" y1="10" x2="11" y2="10" />
+            </svg>
+            Terminal
+          </button>
           {(agent.status === 'running' || agent.status === 'waiting_input') && (
             <button className="btn btn-sm btn-danger" onClick={() => id && api.stopAgent(id)}>
               {t('common.stop')}
@@ -597,7 +611,8 @@ export function AgentChat() {
         </div>
       </div>
 
-      <div className="chat-messages">
+      {id && <TerminalView agentId={id} visible={showTerminal} />}
+      <div className="chat-messages" style={{ display: showTerminal ? 'none' : undefined }}>
         {agent.messages.map((msg) => {
           const isToolMsg = msg.role === 'tool' && (msg.toolInput || msg.toolResult);
           const isExpanded = expandedTools.has(msg.id);

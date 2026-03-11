@@ -105,10 +105,13 @@ export class AgentProcess extends EventEmitter {
     this.process.stdout?.on('data', (data: Buffer) => {
       this.buffer += data.toString();
       this.processBuffer();
+      // Emit raw terminal data for live terminal attachment (base64 to preserve ANSI)
+      this.emit('terminal', { stream: 'stdout', data: data.toString('base64') });
     });
 
     this.process.stderr?.on('data', (data: Buffer) => {
       this.emit('stderr', data.toString());
+      this.emit('terminal', { stream: 'stderr', data: data.toString('base64') });
     });
 
     this.process.on('close', (code) => {
