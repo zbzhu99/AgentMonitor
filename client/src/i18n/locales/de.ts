@@ -6,6 +6,7 @@ export const de: Record<string, string> = {
     'nav.newAgent': 'Neuer Agent',
     'nav.templates': 'Vorlagen',
     'nav.help': 'Dokumentation',
+    'nav.theme': 'Design wechseln',
 
     // Common
     'common.loading': 'Wird geladen...',

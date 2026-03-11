@@ -6,6 +6,7 @@ export const zh: Record<string, string> = {
     'nav.newAgent': '新建代理',
     'nav.templates': '模板',
     'nav.help': '文档',
+    'nav.theme': '切换主题',
 
     // Common
     'common.loading': '加载中...',

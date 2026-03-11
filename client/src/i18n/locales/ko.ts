@@ -6,6 +6,7 @@ export const ko: Record<string, string> = {
     'nav.newAgent': '새 에이전트',
     'nav.templates': '템플릿',
     'nav.help': '문서',
+    'nav.theme': '테마 전환',
 
     // Common
     'common.loading': '로딩 중...',

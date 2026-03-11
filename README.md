@@ -8,7 +8,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tests](https://img.shields.io/badge/Tests-40%20passing-22c55e?style=for-the-badge)](server/__tests__)
 
-**Agent Monitor** is an enterprise-ready web platform for orchestrating, monitoring, and managing AI coding agents at scale. Deploy Claude Code and OpenAI Codex agents from a unified dashboard — with real-time observability, automated task pipelines, and instant notifications via **Email**, **WhatsApp**, and **Slack**.
+A web dashboard to run, monitor, and manage **Claude Code** and **Codex** agents in one place. Real-time streaming, task pipelines, and notifications via Email / WhatsApp / Slack — all from your browser.
 
 ---
 

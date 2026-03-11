@@ -6,6 +6,7 @@ export const ja: Record<string, string> = {
     'nav.newAgent': '新規エージェント',
     'nav.templates': 'テンプレート',
     'nav.help': 'ドキュメント',
+    'nav.theme': 'テーマ切替',
 
     // Common
     'common.loading': '読み込み中...',

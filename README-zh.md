@@ -8,7 +8,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Tests](https://img.shields.io/badge/Tests-40%20passing-22c55e?style=for-the-badge)](server/__tests__)
 
-**Agent Monitor** 是一个企业级 Web 平台，用于大规模编排、监控和管理 AI 编程代理。从统一仪表盘部署 Claude Code 和 OpenAI Codex 代理 —— 具备实时可观测性、自动化任务流水线，以及通过 **邮件**、**WhatsApp** 和 **Slack** 发送即时通知。
+一个 Web 仪表盘，用于在同一界面运行、监控和管理 **Claude Code** 和 **Codex** 代理。实时流式输出、任务流水线、邮件 / WhatsApp / Slack 通知 —— 全部在浏览器中完成。
 
 ---
 
