@@ -76,10 +76,12 @@ export function AgentChat() {
 
     joinAgent(id);
     const socket = getSocket();
+    let socketWorking = false;
 
     // Primary: incremental delta (lightweight, only new messages + metadata)
     const onDelta = (data: { agentId: string; delta: { messages: Agent['messages']; status: string; costUsd?: number; tokenUsage?: Agent['tokenUsage']; lastActivity: number } }) => {
       if (data.agentId !== id) return;
+      socketWorking = true;
       setAgent(prev => {
         if (!prev) return prev;
         const existingIds = new Set(prev.messages.map(m => m.id));
@@ -98,6 +100,7 @@ export function AgentChat() {
     // Full snapshot (for status changes, initial load, dashboard sync)
     const onUpdate = (data: { agentId: string; agent: Agent }) => {
       if (data.agentId === id && data.agent) {
+        socketWorking = true;
         setAgent(data.agent);
       }
     };
@@ -105,6 +108,7 @@ export function AgentChat() {
     // Status change
     const onStatus = (data: { agentId: string; status: string }) => {
       if (data.agentId === id) {
+        socketWorking = true;
         setAgent(prev => prev ? { ...prev, status: data.status as Agent['status'] } : prev);
         // Clear input prompt when agent resumes running
         if (data.status === 'running') {
@@ -116,6 +120,7 @@ export function AgentChat() {
     // Input required (permission prompts, choices)
     const onInputRequired = (data: { agentId: string; inputInfo: { prompt: string; choices?: string[] } }) => {
       if (data.agentId === id) {
+        socketWorking = true;
         setInputRequired(data.inputInfo);
         // Focus the input field
         setTimeout(() => inputRef.current?.focus(), 100);
@@ -127,12 +132,31 @@ export function AgentChat() {
     socket.on('agent:status', onStatus);
     socket.on('agent:input_required', onInputRequired);
 
+    // Re-join room on reconnect (socket.io assigns new socket id after reconnect)
+    const onReconnect = () => {
+      console.log('[AgentChat] Socket reconnected, re-joining room');
+      joinAgent(id);
+      fetchAgent();
+    };
+    socket.on('connect', onReconnect);
+
+    // Polling fallback: if socket events aren't arriving, poll every 3s while agent is running
+    const pollInterval = setInterval(() => {
+      if (!socketWorking) {
+        fetchAgent();
+      }
+      // Reset flag each interval — if no socket events arrive in the next interval, we'll poll again
+      socketWorking = false;
+    }, 3000);
+
     return () => {
       leaveAgent(id);
+      clearInterval(pollInterval);
       socket.off('agent:delta', onDelta);
       socket.off('agent:update', onUpdate);
       socket.off('agent:status', onStatus);
       socket.off('agent:input_required', onInputRequired);
+      socket.off('connect', onReconnect);
     };
   }, [id, fetchAgent]);
 
@@ -620,7 +644,11 @@ export function AgentChat() {
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={agent.status === 'waiting_input' ? t('chat.inputRequiredPlaceholder') : t('chat.inputPlaceholder')}
+            placeholder={
+              agent.status === 'waiting_input' ? t('chat.inputRequiredPlaceholder') :
+              (agent.status === 'stopped' || agent.status === 'error') ? t('chat.resumePlaceholder') :
+              t('chat.inputPlaceholder')
+            }
             autoFocus
           />
           <button className="btn" onClick={handleSend}>

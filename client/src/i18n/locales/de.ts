@@ -77,6 +77,7 @@ export const de: Record<string, string> = {
     'chat.escHint': 'Esc zweimal drücken, um den Agenten zu unterbrechen',
     'chat.waitingInput': 'Agent wartet auf Ihre Eingabe',
     'chat.inputRequiredPlaceholder': 'Geben Sie Ihre Antwort an den Agenten ein...',
+    'chat.resumePlaceholder': 'Nachricht eingeben, um diese Sitzung fortzusetzen...',
     'chat.inputPlaceholder': 'Nachricht eingeben oder / für Befehle...',
     'chat.editClaudeMdTitle': 'CLAUDE.md bearbeiten',
     'chat.slashAgents': 'Alle verwalteten Agenten auflisten',

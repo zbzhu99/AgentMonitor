@@ -50,6 +50,7 @@ export interface Agent {
   mcpServers?: string[];
   contextWindow?: { used: number; total: number };
   currentTask?: string;
+  sessionId?: string;
 }
 
 export interface Template {

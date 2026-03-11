@@ -217,7 +217,10 @@ export class AgentManager extends EventEmitter {
     // Track context window usage from system messages
     const anyMsg = msg as Record<string, unknown>;
     if (anyMsg.num_turns !== undefined || anyMsg.session_id !== undefined) {
-      // Claude verbose stream includes context info
+      // Claude verbose stream includes context info and session_id
+      if (anyMsg.session_id && typeof anyMsg.session_id === 'string') {
+        agent.sessionId = anyMsg.session_id;
+      }
       const contextUsed = (anyMsg.input_tokens_used as number) || 0;
       const contextTotal = (anyMsg.max_input_tokens as number) || 200000;
       if (contextUsed > 0) {
@@ -254,6 +257,13 @@ export class AgentManager extends EventEmitter {
       const cost = (msg as { total_cost_usd?: number }).total_cost_usd || msg.result?.cost_usd;
       if (cost) {
         agent.costUsd = cost;
+      }
+
+      // Store session ID for resume capability
+      const resultAny = msg as Record<string, unknown>;
+      const sessionId = msg.result?.session_id || (resultAny.session_id as string);
+      if (sessionId) {
+        agent.sessionId = sessionId;
       }
 
       // Extract context window from result
@@ -429,27 +439,49 @@ export class AgentManager extends EventEmitter {
   }
 
   sendMessage(agentId: string, text: string): void {
+    const agent = this.store.getAgent(agentId);
+    if (!agent) return;
+
+    // Add user message to history
+    agent.messages.push({
+      id: uuid(),
+      role: 'user',
+      content: text,
+      timestamp: Date.now(),
+    });
+    agent.lastActivity = Date.now();
+    this.store.saveAgent(agent);
+    // Emit full snapshot so chat UI updates immediately with user message
+    this.emit('agent:update', agentId, agent);
+
     const proc = this.processes.get(agentId);
     if (proc) {
-      const agent = this.store.getAgent(agentId);
-      if (agent) {
-        agent.messages.push({
-          id: uuid(),
-          role: 'user',
-          content: text,
-          timestamp: Date.now(),
-        });
-        agent.lastActivity = Date.now();
-        this.store.saveAgent(agent);
-        // Emit full snapshot so chat UI updates immediately with user message
-        this.emit('agent:update', agentId, agent);
-      }
+      // Agent is running — send message to existing process
       proc.sendMessage(text);
       this.emit('agent:message', agentId, {
         type: 'user',
         text,
       });
+    } else if (agent.status === 'stopped' || agent.status === 'error') {
+      // Agent is stopped — resume with new prompt
+      this.resumeAgent(agent, text);
     }
+  }
+
+  private resumeAgent(agent: Agent, newPrompt: string): void {
+    console.log(`[AgentManager] Resuming agent ${agent.id} (session: ${agent.sessionId || 'none'})`);
+
+    // Update the prompt to the new one
+    agent.config.prompt = newPrompt;
+    agent.currentTask = newPrompt.length > 120 ? newPrompt.slice(0, 120) + '...' : newPrompt;
+
+    // If we have a session ID, use --resume to continue the conversation
+    if (agent.sessionId && agent.config.provider === 'claude') {
+      agent.config.flags.resume = agent.sessionId;
+    }
+
+    this.updateAgentStatus(agent.id, 'running');
+    this.startProcess(agent);
   }
 
   interruptAgent(agentId: string): void {

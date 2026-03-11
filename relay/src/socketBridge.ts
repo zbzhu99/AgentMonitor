@@ -32,17 +32,28 @@ export function setupSocketBridge(io: Server, tunnel: TunnelManager): void {
   tunnel.onMessage((msg: TunnelMessage) => {
     if (msg.type === 'socket:s2c') {
       // Broadcast to all connected dashboard clients
+      const sockets = io.sockets.sockets.size;
+      console.log(`[SocketBridge] Broadcasting ${msg.event} to ${sockets} clients`);
       io.emit(msg.event as string, ...(msg.args as unknown[] || []));
     } else if (msg.type === 'socket:s2c:room') {
       // Emit to a specific room
+      const room = io.sockets.adapter.rooms.get(msg.room as string);
+      const roomSize = room?.size || 0;
+      console.log(`[SocketBridge] Emitting ${msg.event} to room ${msg.room} (${roomSize} clients)`);
       io.to(msg.room as string).emit(msg.event as string, ...(msg.args as unknown[] || []));
     }
   });
 
   // Handle dashboard client connections
   io.on('connection', (socket: Socket) => {
+    console.log(`[SocketBridge] Client connected: ${socket.id}`);
+    socket.on('disconnect', (reason) => {
+      console.log(`[SocketBridge] Client disconnected: ${socket.id} (${reason})`);
+    });
+
     // Forward client-to-server events through tunnel
     socket.on('agent:join', (agentId: string) => {
+      console.log(`[SocketBridge] Client ${socket.id} joining room agent:${agentId}`);
       socket.join(`agent:${agentId}`);
       tunnel.send({
         type: 'socket:c2s',

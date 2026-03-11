@@ -77,6 +77,7 @@ export const es: Record<string, string> = {
     'chat.escHint': 'Presiona Esc dos veces para interrumpir el agente',
     'chat.waitingInput': 'El agente está esperando su entrada',
     'chat.inputRequiredPlaceholder': 'Escriba su respuesta al agente...',
+    'chat.resumePlaceholder': 'Escriba un mensaje para reanudar esta sesión...',
     'chat.inputPlaceholder': 'Escribe un mensaje o / para ver comandos...',
     'chat.editClaudeMdTitle': 'Editar CLAUDE.md',
     'chat.slashAgents': 'Listar todos los agentes gestionados',
