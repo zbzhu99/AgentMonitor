@@ -25,16 +25,26 @@ The header shows:
 - **Terminal button** — toggle the embedded terminal view
 - Stop button (when agent is running)
 
-## Terminal View
+## Terminal View (PTY Web Shell)
 
-Click the **Terminal** button in the header to switch from the chat view to a live terminal. The terminal renders the agent's raw stdout/stderr output using xterm.js, preserving ANSI colors and formatting — the same output you'd see if you attached to the agent's terminal session directly.
+Click the **Terminal** button in the header to switch from the chat view to a full interactive terminal. This spawns a real PTY (pseudo-terminal) shell in the agent's working directory using `node-pty` on the server and xterm.js in the browser — giving you the same experience as opening a local terminal.
 
-- **Read-only**: The terminal is for monitoring; use the chat input to send messages
+- **Fully interactive**: Type commands, run `claude`, `git`, or any CLI tool directly in the browser
+- **Real shell**: Uses your system shell (bash/zsh) with full color support (xterm-256color)
 - **5000-line scrollback**: Scroll up to review past output
 - **Auto-resize**: The terminal fits the available space and adapts to window resizing
-- **Works remotely**: Terminal data streams through the relay tunnel just like chat messages
+- **Works remotely**: PTY data streams through the relay tunnel, so you can use the terminal from any device
+- **Keyboard focus**: Terminal auto-focuses when activated for immediate keyboard input
 
-Toggle back to chat view by clicking the Terminal button again. Both views stay mounted so no data is lost when switching.
+Toggle back to chat view by clicking the Terminal button again. Both views stay mounted so no data is lost when switching. The PTY session persists while you switch between views.
+
+### Two Interfaces, Your Choice
+
+Agent Monitor offers two complementary ways to interact with agents:
+
+1. **Chat View** (default) — Structured JSON-based interface with message bubbles, tool call expansion, slash commands, and cost tracking. Best for monitoring and reviewing agent work.
+
+2. **Terminal View** — Real PTY shell in the agent's working directory. Best for hands-on work: running commands, launching `claude` manually, debugging, or any task where you want a full terminal experience.
 
 ## Message Types
 

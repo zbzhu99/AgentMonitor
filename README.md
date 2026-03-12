@@ -24,8 +24,8 @@ A web dashboard to run, monitor, and manage **Claude Code** and **Codex** agents
 
 ### Real-Time Monitoring & Interaction
 - **Live streaming** — Watch agent output in real-time over WebSocket (works locally and through relay), with automatic polling fallback
-- **Remote terminal attachment** — Toggle a live embedded terminal (xterm.js) to see raw CLI output with full ANSI color rendering, just like attaching to the agent's terminal session
-- **Web terminal** — Full chat interface with 25+ slash commands matching CLI behavior
+- **PTY web terminal** — Toggle a fully interactive shell (node-pty + xterm.js) in the agent's working directory — run any command, launch `claude`, or debug directly from the browser
+- **Web chat interface** — Structured chat view with 25+ slash commands matching CLI behavior; both interfaces coexist and you can switch freely
 - **Session resume** — Send a message to a stopped agent to automatically restart it with `--resume`, continuing the conversation with full history
 - **Clone agent** — Duplicate an existing agent's configuration to quickly create a new one with the same settings
 - **Interactive prompts** — When an agent needs input (permission prompts, choices), the web UI shows notification banners and clickable choice buttons
@@ -292,6 +292,12 @@ Create, edit, and reuse CLAUDE.md instruction templates across agents.
 | `agent:status` | Server → Client | Status change |
 | `task:update` | Server → Client | Pipeline task updated |
 | `pipeline:complete` | Server → Client | Pipeline complete |
+| `terminal:open` | Client → Server | Open PTY terminal in agent directory |
+| `terminal:input` | Client → Server | Send keystrokes to PTY |
+| `terminal:resize` | Client → Server | Resize PTY dimensions |
+| `terminal:close` | Client → Server | Close PTY session |
+| `terminal:output` | Server → Client | PTY output data |
+| `terminal:exit` | Server → Client | PTY process exited |
 | `meta:status` | Server → Client | Meta agent status |
 
 ---
@@ -352,6 +358,7 @@ AgentMonitor/
         MetaAgentManager.ts # Pipeline orchestration
         TunnelClient.ts     # Outbound tunnel to relay server
         tunnelBridge.ts     # Event bridge for tunnel
+        TerminalService.ts  # PTY terminal management (node-pty)
         WorktreeManager.ts  # Git worktree ops
         EmailNotifier.ts    # SMTP email notifications
         WhatsAppNotifier.ts # Twilio WhatsApp notifications
