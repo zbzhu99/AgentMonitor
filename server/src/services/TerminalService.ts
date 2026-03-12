@@ -1,0 +1,81 @@
+import * as pty from 'node-pty';
+import { EventEmitter } from 'events';
+
+interface TerminalSession {
+  ptyProcess: pty.IPty;
+  agentId: string;
+  cwd: string;
+}
+
+export class TerminalService extends EventEmitter {
+  private sessions: Map<string, TerminalSession> = new Map();
+
+  /**
+   * Create or get existing terminal session for an agent.
+   * Returns the session key (agentId).
+   */
+  create(agentId: string, cwd: string, cols = 120, rows = 30): string {
+    // Reuse existing session if alive
+    const existing = this.sessions.get(agentId);
+    if (existing) {
+      return agentId;
+    }
+
+    const shell = process.env.SHELL || '/bin/bash';
+    const ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd,
+      env: {
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      } as Record<string, string>,
+    });
+
+    ptyProcess.onData((data: string) => {
+      this.emit('data', agentId, data);
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      this.sessions.delete(agentId);
+      this.emit('exit', agentId, exitCode);
+    });
+
+    this.sessions.set(agentId, { ptyProcess, agentId, cwd });
+    return agentId;
+  }
+
+  write(agentId: string, data: string): void {
+    const session = this.sessions.get(agentId);
+    if (session) {
+      session.ptyProcess.write(data);
+    }
+  }
+
+  resize(agentId: string, cols: number, rows: number): void {
+    const session = this.sessions.get(agentId);
+    if (session) {
+      session.ptyProcess.resize(cols, rows);
+    }
+  }
+
+  destroy(agentId: string): void {
+    const session = this.sessions.get(agentId);
+    if (session) {
+      session.ptyProcess.kill();
+      this.sessions.delete(agentId);
+    }
+  }
+
+  has(agentId: string): boolean {
+    return this.sessions.has(agentId);
+  }
+
+  destroyAll(): void {
+    for (const [id] of this.sessions) {
+      this.destroy(id);
+    }
+  }
+}

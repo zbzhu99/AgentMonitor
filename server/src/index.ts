@@ -20,6 +20,7 @@ import { taskRoutes } from './routes/tasks.js';
 import { setupSocketHandlers } from './socket/handlers.js';
 import { TunnelClient } from './services/TunnelClient.js';
 import { setupTunnelBridge } from './services/tunnelBridge.js';
+import { TerminalService } from './services/TerminalService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -83,7 +84,8 @@ export function createApp() {
   }
 
   // Socket.IO
-  setupSocketHandlers(io, manager);
+  const terminalService = new TerminalService();
+  setupSocketHandlers(io, manager, terminalService);
 
   // Forward meta agent events to socket
   metaAgent.on('task:update', (task) => {
@@ -115,7 +117,7 @@ export function createApp() {
   let tunnelClient: TunnelClient | null = null;
   if (config.relay.url && config.relay.token) {
     tunnelClient = new TunnelClient(config.relay.url, config.relay.token, config.port);
-    setupTunnelBridge(tunnelClient, manager, metaAgent);
+    setupTunnelBridge(tunnelClient, manager, metaAgent, terminalService);
     tunnelClient.start();
     console.log(`[Server] Tunnel client connecting to ${config.relay.url}`);
   }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -13,6 +13,23 @@ export function TerminalView({ agentId, visible }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const openedRef = useRef(false);
+
+  const openTerminal = useCallback(() => {
+    const fit = fitRef.current;
+    const term = termRef.current;
+    if (!fit || !term || openedRef.current) return;
+    openedRef.current = true;
+
+    const socket = getSocket();
+    // Request PTY with current terminal dimensions
+    const dims = fit.proposeDimensions();
+    socket.emit('terminal:open', {
+      agentId,
+      cols: dims?.cols || 120,
+      rows: dims?.rows || 30,
+    });
+  }, [agentId]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -21,7 +38,8 @@ export function TerminalView({ agentId, visible }: Props) {
       theme: {
         background: '#0d1117',
         foreground: '#e6edf3',
-        cursor: '#e6edf3',
+        cursor: '#58a6ff',
+        cursorAccent: '#0d1117',
         selectionBackground: '#264f78',
         black: '#484f58',
         red: '#ff7b72',
@@ -42,8 +60,7 @@ export function TerminalView({ agentId, visible }: Props) {
       },
       fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, 'Courier New', monospace",
-      cursorBlink: false,
-      disableStdin: true,
+      cursorBlink: true,
       scrollback: 5000,
       convertEol: true,
     });
@@ -51,43 +68,73 @@ export function TerminalView({ agentId, visible }: Props) {
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(containerRef.current);
-
-    // Delay initial fit to allow container to layout
     requestAnimationFrame(() => fit.fit());
 
     termRef.current = term;
     fitRef.current = fit;
 
     const socket = getSocket();
-    const onTerminal = (data: { agentId: string; chunk: { stream: string; data: string } }) => {
-      if (data.agentId !== agentId) return;
-      try {
-        const bytes = atob(data.chunk.data);
-        term.write(bytes);
-      } catch {
-        // ignore decode errors
-      }
-    };
-    socket.on('agent:terminal', onTerminal);
 
-    const onResize = () => fit.fit();
-    window.addEventListener('resize', onResize);
+    // PTY output → xterm
+    const onOutput = (data: { agentId: string; data: string }) => {
+      if (data.agentId !== agentId) return;
+      term.write(data.data);
+    };
+    socket.on('terminal:output', onOutput);
+
+    // PTY exit
+    const onExit = (data: { agentId: string; exitCode: number }) => {
+      if (data.agentId !== agentId) return;
+      term.write(`\r\n\x1b[90m[terminal exited with code ${data.exitCode}]\x1b[0m\r\n`);
+      openedRef.current = false;
+    };
+    socket.on('terminal:exit', onExit);
+
+    // xterm input → PTY
+    const inputDisposable = term.onData((data: string) => {
+      socket.emit('terminal:input', { agentId, data });
+    });
+
+    // Resize → PTY
+    const resizeDisposable = term.onResize(({ cols, rows }) => {
+      socket.emit('terminal:resize', { agentId, cols, rows });
+    });
+
+    const onWindowResize = () => {
+      fit.fit();
+    };
+    window.addEventListener('resize', onWindowResize);
 
     return () => {
-      socket.off('agent:terminal', onTerminal);
-      window.removeEventListener('resize', onResize);
+      socket.off('terminal:output', onOutput);
+      socket.off('terminal:exit', onExit);
+      inputDisposable.dispose();
+      resizeDisposable.dispose();
+      window.removeEventListener('resize', onWindowResize);
+      // Close PTY when component unmounts
+      if (openedRef.current) {
+        socket.emit('terminal:close', agentId);
+        openedRef.current = false;
+      }
       term.dispose();
       termRef.current = null;
       fitRef.current = null;
     };
   }, [agentId]);
 
-  // Re-fit when visibility changes
+  // Open PTY and fit when becoming visible
   useEffect(() => {
     if (visible) {
-      requestAnimationFrame(() => fitRef.current?.fit());
+      requestAnimationFrame(() => {
+        fitRef.current?.fit();
+        if (!openedRef.current) {
+          openTerminal();
+        }
+        // Focus the terminal for keyboard input
+        termRef.current?.focus();
+      });
     }
-  }, [visible]);
+  }, [visible, openTerminal]);
 
   return (
     <div
