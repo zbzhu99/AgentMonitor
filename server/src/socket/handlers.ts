@@ -64,11 +64,11 @@ export function setupSocketHandlers(io: Server, manager: AgentManager, terminalS
     });
 
     // --- PTY terminal events ---
-    socket.on('terminal:open', ({ agentId, cols, rows }: { agentId: string; cols?: number; rows?: number }) => {
+    socket.on('terminal:open', ({ agentId, cols, rows, initialCommand }: { agentId: string; cols?: number; rows?: number; initialCommand?: string }) => {
       const agent = manager.getAgent(agentId);
       if (!agent) return;
       const cwd = agent.worktreePath || agent.config.directory;
-      terminalService.create(agentId, cwd, cols || 120, rows || 30);
+      terminalService.create(agentId, cwd, cols || 120, rows || 30, initialCommand);
     });
 
     socket.on('terminal:input', ({ agentId, data }: { agentId: string; data: string }) => {

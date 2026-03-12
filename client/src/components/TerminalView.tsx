@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -7,33 +7,32 @@ import { getSocket } from '../api/socket';
 interface Props {
   agentId: string;
   visible: boolean;
+  /** If provided, auto-run this command when PTY opens (e.g. claude --resume ...) */
+  initialCommand?: string;
 }
 
-export function TerminalView({ agentId, visible }: Props) {
+/**
+ * Lazy-mounted interactive PTY terminal.
+ * Only renders xterm after the user first clicks the Terminal button (visible=true).
+ * This avoids opening xterm into a 0x0 hidden container.
+ */
+export function TerminalView({ agentId, visible, initialCommand }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const openedRef = useRef(false);
+  const everVisibleRef = useRef(false);
 
-  const openTerminal = useCallback(() => {
-    const fit = fitRef.current;
-    const term = termRef.current;
-    if (!fit || !term || openedRef.current) return;
-    openedRef.current = true;
+  // Track whether we've ever been visible (for lazy init)
+  if (visible) everVisibleRef.current = true;
 
-    const socket = getSocket();
-    // Request PTY with current terminal dimensions
-    const dims = fit.proposeDimensions();
-    socket.emit('terminal:open', {
-      agentId,
-      cols: dims?.cols || 120,
-      rows: dims?.rows || 30,
-    });
-  }, [agentId]);
-
+  // Initialize xterm + PTY on first visibility
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!everVisibleRef.current || !containerRef.current) return;
+    // Already initialized
+    if (termRef.current) return;
 
+    const container = containerRef.current;
     const term = new Terminal({
       theme: {
         background: '#0d1117',
@@ -67,13 +66,19 @@ export function TerminalView({ agentId, visible }: Props) {
 
     const fit = new FitAddon();
     term.loadAddon(fit);
-    term.open(containerRef.current);
-    requestAnimationFrame(() => fit.fit());
+    term.open(container);
+    fit.fit();
 
     termRef.current = term;
     fitRef.current = fit;
 
     const socket = getSocket();
+
+    // Ensure we're in the agent room before opening PTY
+    // (child effects run before parent effects, so AgentChat's joinAgent may not have fired yet)
+    socket.emit('agent:join', agentId);
+
+    // Register listeners BEFORE opening PTY so we don't miss the initial prompt
 
     // PTY output → xterm
     const onOutput = (data: { agentId: string; data: string }) => {
@@ -101,9 +106,25 @@ export function TerminalView({ agentId, visible }: Props) {
     });
 
     const onWindowResize = () => {
-      fit.fit();
+      if (container.offsetHeight) {
+        fit.fit();
+      }
     };
     window.addEventListener('resize', onWindowResize);
+
+    term.focus();
+
+    // Open PTY after a short delay to ensure room join is processed server-side
+    openedRef.current = true;
+    setTimeout(() => {
+      const dims = fit.proposeDimensions();
+      socket.emit('terminal:open', {
+        agentId,
+        cols: dims?.cols || 120,
+        rows: dims?.rows || 30,
+        initialCommand,
+      });
+    }, 200);
 
     return () => {
       socket.off('terminal:output', onOutput);
@@ -111,7 +132,6 @@ export function TerminalView({ agentId, visible }: Props) {
       inputDisposable.dispose();
       resizeDisposable.dispose();
       window.removeEventListener('resize', onWindowResize);
-      // Close PTY when component unmounts
       if (openedRef.current) {
         socket.emit('terminal:close', agentId);
         openedRef.current = false;
@@ -120,21 +140,17 @@ export function TerminalView({ agentId, visible }: Props) {
       termRef.current = null;
       fitRef.current = null;
     };
-  }, [agentId]);
+  }, [visible, agentId]); // re-run when visible changes (first true triggers init)
 
-  // Open PTY and fit when becoming visible
+  // Re-fit and focus when toggling back to visible after init
   useEffect(() => {
-    if (visible) {
+    if (visible && termRef.current && fitRef.current) {
       requestAnimationFrame(() => {
         fitRef.current?.fit();
-        if (!openedRef.current) {
-          openTerminal();
-        }
-        // Focus the terminal for keyboard input
         termRef.current?.focus();
       });
     }
-  }, [visible, openTerminal]);
+  }, [visible]);
 
   return (
     <div

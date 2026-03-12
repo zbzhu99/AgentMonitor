@@ -12,6 +12,34 @@ function toggleTheme() {
   localStorage.setItem('agentmonitor-theme', next);
 }
 
+/**
+ * Build a `claude --resume <sessionId>` command with the agent's flags
+ * so the PTY terminal auto-launches an interactive Claude session.
+ */
+function buildResumeCommand(agent: Agent | null): string | undefined {
+  if (!agent) return undefined;
+  const provider = agent.config.provider || 'claude';
+  // Only Claude supports --resume
+  if (provider !== 'claude') return undefined;
+  if (!agent.sessionId) return undefined;
+
+  // Convert camelCase flag keys to kebab-case for CLI
+  const toKebab = (s: string) => s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+
+  const parts = ['claude', '--resume', agent.sessionId];
+  const flags = agent.config.flags || {};
+  for (const [key, value] of Object.entries(flags)) {
+    if (key === 'resume') continue; // already added
+    const flag = toKebab(key);
+    if (value === true) {
+      parts.push(`--${flag}`);
+    } else if (value !== false && value !== undefined && value !== null && value !== '') {
+      parts.push(`--${flag}`, String(value));
+    }
+  }
+  return parts.join(' ');
+}
+
 export function AgentChat() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -611,7 +639,7 @@ export function AgentChat() {
         </div>
       </div>
 
-      {id && <TerminalView agentId={id} visible={showTerminal} />}
+      {id && <TerminalView agentId={id} visible={showTerminal} initialCommand={buildResumeCommand(agent)} />}
       <div className="chat-messages" style={{ display: showTerminal ? 'none' : undefined }}>
         {agent.messages.map((msg) => {
           const isToolMsg = msg.role === 'tool' && (msg.toolInput || msg.toolResult);
@@ -670,10 +698,10 @@ export function AgentChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="esc-hint">{t('chat.escHint')}</div>
+      {!showTerminal && <div className="esc-hint">{t('chat.escHint')}</div>}
 
       {/* Input required notification banner */}
-      {(agent.status === 'waiting_input' || inputRequired) && (
+      {!showTerminal && (agent.status === 'waiting_input' || inputRequired) && (
         <div style={{
           padding: '10px 16px',
           background: 'var(--yellow, #f59e0b)',
@@ -713,7 +741,7 @@ export function AgentChat() {
         </div>
       )}
 
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', display: showTerminal ? 'none' : undefined }}>
         {showSlash && filteredCommands.length > 0 && (
           <div className="slash-hints">
             {filteredCommands.map((cmd, i) => (

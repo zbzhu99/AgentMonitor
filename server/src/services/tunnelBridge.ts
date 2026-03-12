@@ -151,11 +151,11 @@ export function setupTunnelBridge(
       // PTY terminal events
       case 'terminal:open': {
         if (terminalService) {
-          const d = args[0] as { agentId: string; cols?: number; rows?: number };
+          const d = args[0] as { agentId: string; cols?: number; rows?: number; initialCommand?: string };
           const agent = manager.getAgent(d.agentId);
           if (agent) {
             const cwd = agent.worktreePath || agent.config.directory;
-            terminalService.create(d.agentId, cwd, d.cols || 120, d.rows || 30);
+            terminalService.create(d.agentId, cwd, d.cols || 120, d.rows || 30, d.initialCommand);
           }
         }
         break;

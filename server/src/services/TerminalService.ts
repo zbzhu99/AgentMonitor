@@ -14,11 +14,12 @@ export class TerminalService extends EventEmitter {
    * Create or get existing terminal session for an agent.
    * Returns the session key (agentId).
    */
-  create(agentId: string, cwd: string, cols = 120, rows = 30): string {
-    // Reuse existing session if alive
+  create(agentId: string, cwd: string, cols = 120, rows = 30, initialCommand?: string): string {
+    // Destroy existing session if alive — a new terminal:open means a fresh PTY is wanted
     const existing = this.sessions.get(agentId);
     if (existing) {
-      return agentId;
+      existing.ptyProcess.kill();
+      this.sessions.delete(agentId);
     }
 
     const shell = process.env.SHELL || '/bin/bash';
@@ -31,6 +32,7 @@ export class TerminalService extends EventEmitter {
         ...process.env,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
+        CLAUDECODE: '', // Unset so claude can launch inside PTY
       } as Record<string, string>,
     });
 
@@ -44,6 +46,17 @@ export class TerminalService extends EventEmitter {
     });
 
     this.sessions.set(agentId, { ptyProcess, agentId, cwd });
+
+    // Auto-run initial command (e.g. claude --resume <sessionId>)
+    if (initialCommand) {
+      // Small delay to let the shell initialize before sending command
+      setTimeout(() => {
+        if (this.sessions.has(agentId)) {
+          ptyProcess.write(initialCommand + '\r');
+        }
+      }, 300);
+    }
+
     return agentId;
   }
 
