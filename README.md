@@ -197,6 +197,8 @@ All configuration is via environment variables. Copy `.env.example` to `.env` an
 7. Enter an **Admin Email**, **WhatsApp Phone**, and/or **Slack Webhook URL** for notifications
 8. Click **Create Agent**
 
+**Tip — Clone an existing agent:** Hit the **Clone** button on any agent card to create a new agent pre-filled with the same directory, provider, flags, and CLAUDE.md. Combine with templates for a reusable agent library: create a template with your standard instructions → create one agent using it → clone whenever you need a fresh instance.
+
 ### Dashboard
 
 Each agent is represented by a rich information card displaying:
