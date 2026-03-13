@@ -11,6 +11,7 @@ import { WorktreeManager } from './WorktreeManager.js';
 import { EmailNotifier } from './EmailNotifier.js';
 import { WhatsAppNotifier } from './WhatsAppNotifier.js';
 import { SlackNotifier } from './SlackNotifier.js';
+import { FeishuNotifier } from './FeishuNotifier.js';
 
 export class AgentManager extends EventEmitter {
   private processes: Map<string, AgentProcess> = new Map();
@@ -19,14 +20,16 @@ export class AgentManager extends EventEmitter {
   private emailNotifier: EmailNotifier;
   private whatsappNotifier: WhatsAppNotifier;
   private slackNotifier: SlackNotifier;
+  private feishuNotifier: FeishuNotifier;
 
-  constructor(store: AgentStore, worktreeManager?: WorktreeManager, emailNotifier?: EmailNotifier, whatsappNotifier?: WhatsAppNotifier, slackNotifier?: SlackNotifier) {
+  constructor(store: AgentStore, worktreeManager?: WorktreeManager, emailNotifier?: EmailNotifier, whatsappNotifier?: WhatsAppNotifier, slackNotifier?: SlackNotifier, feishuNotifier?: FeishuNotifier) {
     super();
     this.store = store;
     this.worktreeManager = worktreeManager || new WorktreeManager();
     this.emailNotifier = emailNotifier || new EmailNotifier();
     this.whatsappNotifier = whatsappNotifier || new WhatsAppNotifier();
     this.slackNotifier = slackNotifier || new SlackNotifier();
+    this.feishuNotifier = feishuNotifier || new FeishuNotifier('', '');
   }
 
   async createAgent(name: string, agentConfig: AgentConfig): Promise<Agent> {
@@ -487,6 +490,13 @@ export class AgentManager extends EventEmitter {
         agent.name,
         notificationMessage,
         agent.config.slackWebhookUrl,
+      );
+    }
+    if (agent.config.feishuChatId) {
+      this.feishuNotifier.notifyHumanNeeded(
+        agent.config.feishuChatId,
+        agent,
+        inputInfo.choices,
       );
     }
   }

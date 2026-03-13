@@ -53,7 +53,7 @@ class MockAgentManager extends EventEmitter {
   }
 
   stopAgent = vi.fn().mockResolvedValue(undefined);
-  sendInput = vi.fn().mockResolvedValue(undefined);
+  sendMessage = vi.fn().mockResolvedValue(undefined);
 }
 
 function makeAgent(overrides: any = {}) {
@@ -198,7 +198,7 @@ describe('FeishuService - handleMessage', () => {
     manager.addAgent(makeAgent({ id: 'agent-1234', name: 'My Bot' }));
     await svc.handleMessage(makeEvent('/attach My Bot'));
     await svc.handleMessage(makeEvent('hello agent'));
-    expect(manager.sendInput).toHaveBeenCalledWith('agent-1234', 'hello agent');
+    expect(manager.sendMessage).toHaveBeenCalledWith('agent-1234', 'hello agent');
   });
 
   it('free text when unbound shows help', async () => {
@@ -274,7 +274,7 @@ describe('FeishuService - handleCardAction', () => {
       context: { open_chat_id: 'chat1' },
     };
     await svc.handleCardAction(event);
-    expect(manager.sendInput).toHaveBeenCalledWith('agent-1234', 'Yes');
+    expect(manager.sendMessage).toHaveBeenCalledWith('agent-1234', 'Yes');
     expect(svc.sendText).toHaveBeenCalledWith('chat1', expect.stringContaining('Yes'));
   });
 

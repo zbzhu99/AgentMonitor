@@ -22,6 +22,7 @@ import { TunnelClient } from './services/TunnelClient.js';
 import { setupTunnelBridge } from './services/tunnelBridge.js';
 import { TerminalService } from './services/TerminalService.js';
 import { FeishuService } from './services/FeishuService.js';
+import { FeishuNotifier } from './services/FeishuNotifier.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,8 +40,11 @@ export function createApp() {
   const emailNotifier = new EmailNotifier();
   const whatsappNotifier = new WhatsAppNotifier();
   const slackNotifier = new SlackNotifier();
-  const manager = new AgentManager(store, undefined, emailNotifier, whatsappNotifier, slackNotifier);
-  const metaAgent = new MetaAgentManager(store, manager, emailNotifier, whatsappNotifier, slackNotifier);
+  const feishuNotifier = config.feishu.appId && config.feishu.appSecret
+    ? new FeishuNotifier(config.feishu.appId, config.feishu.appSecret)
+    : undefined;
+  const manager = new AgentManager(store, undefined, emailNotifier, whatsappNotifier, slackNotifier, feishuNotifier);
+  const metaAgent = new MetaAgentManager(store, manager, emailNotifier, whatsappNotifier, slackNotifier, feishuNotifier);
 
   // REST routes
   app.use('/api/agents', agentRoutes(manager));

@@ -345,7 +345,7 @@ export class FeishuService extends EventEmitter {
       return;
     }
     try {
-      await this.manager.sendInput(binding.agentId, text);
+      await this.manager.sendMessage(binding.agentId, text);
       // Clear pending choices once user replied
       binding.pendingChoices = undefined;
       this.saveBindings();
@@ -374,7 +374,7 @@ export class FeishuService extends EventEmitter {
         this.saveBindings();
       }
       try {
-        await this.manager.sendInput(agentId, choice);
+        await this.manager.sendMessage(agentId, choice);
         const b = this.bindings.get(chatId);
         if (b) {
           b.pendingChoices = undefined;

@@ -37,5 +37,7 @@ export const config = {
     allowedUsers: process.env.FEISHU_ALLOWED_USERS
       ? process.env.FEISHU_ALLOWED_USERS.split(',').map(s => s.trim()).filter(Boolean)
       : [],
+    /** Admin chat ID for pipeline/global notifications (optional) */
+    adminChatId: process.env.FEISHU_ADMIN_CHAT_ID || '',
   },
 };

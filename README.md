@@ -65,6 +65,7 @@ Stay informed wherever you are. Agent Monitor sends instant notifications when a
 | **Email** | Any SMTP server (Gmail, Outlook, Mailgun, etc.) | Configure `SMTP_*` environment variables |
 | **WhatsApp** | Twilio API | Configure `TWILIO_*` environment variables |
 | **Slack** | Slack Incoming Webhooks | Configure `SLACK_WEBHOOK_URL` or per-agent webhook |
+| **Feishu (Lark)** | Feishu Open Platform (WebSocket bot) | Configure `FEISHU_*` variables — sends **interactive cards with reply buttons** |
 
 Notifications are triggered when:
 - An agent enters `waiting_input` state and needs human intervention
@@ -76,8 +77,8 @@ All channels can be enabled simultaneously — configure an admin email, WhatsAp
 
 > See the [Notifications Guide](docs/guide/notifications.md) for detailed setup instructions.
 
-### Feishu (Lark) Bot
-Chat with your agents directly in Feishu. The bot connects via WebSocket — no public URL required — and displays live, updateable agent cards with clickable choice buttons for permission prompts.
+### Feishu (Lark) Bot & Notifications
+Chat with your agents and receive rich interactive alerts directly in Feishu. The bot connects via WebSocket — no public URL required — and displays live, updateable agent cards with clickable choice buttons for permission prompts and pipeline alerts.
 
 ### Remote Access via Relay Server
 - **Access from anywhere** — Manage agents from your phone, laptop, or any device through a public relay server
@@ -381,7 +382,8 @@ Use Feishu (Lark) as an interactive bot interface alongside the web dashboard an
 ### Features
 
 - **Live agent cards** — Agent status, messages, cost, and branch are displayed as updateable interactive Feishu cards (auto-refreshed on every change, debounced to respect rate limits)
-- **Choice buttons** — When an agent waits for human input, permission prompts and choices appear as clickable card buttons
+- **Choice buttons everywhere** — When an agent waits for human input, permission prompts and choices appear as clickable card buttons — both in the bound chat *and* in proactive notification alerts
+- **Unified notifications** — Feishu replaces or complements email/WhatsApp/Slack: task failures, stuck agents, and pipeline completion all send rich cards to the admin chat instead of plain text
 - **Commands** — `/list`, `/attach`, `/detach`, `/stop`, `/status`, `/help`
 - **Access control** — Restrict bot access to specific Feishu `open_id`s via `FEISHU_ALLOWED_USERS`
 - **Persistent bindings** — Chat-to-agent bindings survive server restarts (stored in `data/feishu_bindings.json`)
@@ -398,8 +400,16 @@ Use Feishu (Lark) as an interactive bot interface alongside the web dashboard an
 FEISHU_APP_ID=cli_xxxxxxxxxxxxxxxx
 FEISHU_APP_SECRET=xxxxxxxxxxxxxxxx
 
-# Optional: restrict to specific users (comma-separated open_ids)
+# Admin chat for pipeline notifications (task failures, pipeline complete, stuck agents)
+FEISHU_ADMIN_CHAT_ID=oc_xxxxxxxxxxxx
+
+# Optional: restrict bot to specific users (comma-separated open_ids)
 FEISHU_ALLOWED_USERS=ou_xxxx,ou_yyyy
+```
+
+To send Feishu notifications for a specific agent (e.g., `waiting_input`), set `feishuChatId` when creating the agent via API:
+```json
+{ "feishuChatId": "oc_xxxxxxxxxxxx" }
 ```
 
 ### Usage

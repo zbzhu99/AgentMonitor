@@ -19,6 +19,7 @@ export interface AgentConfig {
   adminEmail?: string;
   whatsappPhone?: string;
   slackWebhookUrl?: string;
+  feishuChatId?: string;
   flags: {
     dangerouslySkipPermissions?: boolean;
     resume?: string;
