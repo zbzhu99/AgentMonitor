@@ -34,6 +34,12 @@ A web dashboard to run, monitor, and manage **Claude Code** and **Codex** agents
 
 ## Key Features
 
+### Spin Up Agents Instantly with Cloneable Templates
+- **Clone agent** — Duplicate any agent's configuration (directory, provider, flags, CLAUDE.md) to instantly spin up a new one with the same setup — no re-entering settings
+- **CLAUDE.md templates** — Create reusable instruction sets and load them when spawning agents
+- **Auto-detect CLAUDE.md** — When selecting a project directory, automatically detects an existing CLAUDE.md and offers to load it
+- **Live editing** — Modify an agent's CLAUDE.md at any time without restarting
+
 ### Multi-Agent Orchestration
 - **Unified dashboard** — Create, monitor, and manage Claude Code and Codex agents from a single interface
 - **Task pipelines** — Define sequential and parallel task workflows; the built-in Meta Agent Manager automates execution end-to-end
@@ -82,12 +88,6 @@ Phone / Laptop ──HTTP──▶ Public Server (Relay :3457) ◀──WS tunne
 ```
 
 > See the [Remote Access Guide](docs/guide/remote-access.md) for setup instructions.
-
-### Template & Instruction Management
-- **CLAUDE.md templates** — Create reusable instruction sets and load them when spawning agents
-- **Auto-detect CLAUDE.md** — When selecting a project directory, automatically detects existing CLAUDE.md and offers to load it
-- **Live editing** — Modify an agent's CLAUDE.md at any time without restarting
-- **Session resume** — Pick up previous Claude Code sessions where they left off
 
 ### Internationalization
 - **7 languages**: English, Chinese (中文), Japanese (日本語), Korean (한국어), Spanish, French, German
