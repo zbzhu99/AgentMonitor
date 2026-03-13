@@ -9,7 +9,7 @@
 [![Tests](https://img.shields.io/badge/Tests-40%20passing-22c55e?style=for-the-badge)](server/__tests__)
 [![Docs](https://img.shields.io/badge/Docs-VitePress-646cff?style=for-the-badge&logo=vitepress&logoColor=white)](https://ericonaldo.github.io/AgentMonitor/)
 
-A web dashboard to run, monitor, and manage **Claude Code** and **Codex** agents in one place. Real-time streaming, task pipelines, and notifications via Email / WhatsApp / Slack — all from your browser.
+A web dashboard to run, monitor, and manage **Claude Code** and **Codex** agents in one place. Create agents with a cloneable task template. Real-time streaming, task pipelines, and notifications via Email / WhatsApp / Slack — all from your browser.
 
 **[Documentation](https://ericonaldo.github.io/AgentMonitor/)** | **[Quick Start](#quick-start)**
 
