@@ -92,6 +92,10 @@ Phone / Laptop ──HTTP──▶ Public Server (Relay :3457) ◀──WS tunne
 |-----------|-----------------------|
 | ![Templates](docs/screenshots/templates.png) | ![Dashboard (Chinese)](docs/screenshots/dashboard-zh.png) |
 
+| PTY Web Terminal | |
+|------------------|--|
+| ![Terminal](docs/screenshots/terminal.png) | Interactive shell in the agent's working directory — run commands, launch `claude`, or debug directly from your browser (works locally and via relay) |
+
 ---
 
 ## Quick Start

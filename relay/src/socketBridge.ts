@@ -86,5 +86,22 @@ export function setupSocketBridge(io: Server, tunnel: TunnelManager): void {
         args: [agentId],
       });
     });
+
+    // Forward PTY terminal events through tunnel
+    socket.on('terminal:open', (data: { agentId: string; cols?: number; rows?: number; initialCommand?: string }) => {
+      tunnel.send({ type: 'socket:c2s', event: 'terminal:open', args: [data] });
+    });
+
+    socket.on('terminal:input', (data: { agentId: string; data: string }) => {
+      tunnel.send({ type: 'socket:c2s', event: 'terminal:input', args: [data] });
+    });
+
+    socket.on('terminal:resize', (data: { agentId: string; cols: number; rows: number }) => {
+      tunnel.send({ type: 'socket:c2s', event: 'terminal:resize', args: [data] });
+    });
+
+    socket.on('terminal:close', (agentId: string) => {
+      tunnel.send({ type: 'socket:c2s', event: 'terminal:close', args: [agentId] });
+    });
   });
 }

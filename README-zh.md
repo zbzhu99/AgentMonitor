@@ -92,6 +92,10 @@
 |------|------------|
 | ![模板](docs/screenshots/templates.png) | ![仪表盘（中文）](docs/screenshots/dashboard-zh.png) |
 
+| PTY Web 终端 | |
+|-------------|--|
+| ![终端](docs/screenshots/terminal.png) | 直接在浏览器中操作代理工作目录的交互式 Shell —— 运行命令、启动 `claude` 或调试代码（支持本地模式和中继服务器模式） |
+
 ---
 
 ## 快速开始
