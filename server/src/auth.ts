@@ -1,12 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { config } from './config.js';
 
 const JWT_EXPIRY = '24h';
 
 function getJwtSecret(): string {
-  // Use password itself as secret; it's only used for local session tokens
-  return config.password || 'agent-monitor-local';
+  const base = config.password || 'agent-monitor-local';
+  return crypto.createHash('sha256').update(base).digest('hex');
 }
 
 /** Create auth routes: login, logout, session check */
@@ -83,6 +84,12 @@ export function verifyToken(token: string): boolean {
 /** Middleware: require valid JWT for protected routes */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!config.password) {
+    next();
+    return;
+  }
+
+  // Trust requests coming through the tunnel (already authenticated by relay)
+  if (config.relay.token && req.headers['x-tunnel-auth'] === config.relay.token) {
     next();
     return;
   }

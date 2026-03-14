@@ -1,11 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { relayConfig } from './config.js';
 
 const JWT_EXPIRY = '24h';
 
 function getJwtSecret(): string {
-  return relayConfig.token;
+  return crypto.createHash('sha256').update(relayConfig.token).digest('hex');
 }
 
 /** Create auth routes: login, logout, session check */

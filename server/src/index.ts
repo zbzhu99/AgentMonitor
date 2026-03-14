@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { parse as parseCookie } from 'cookie';
 import cookieParser from 'cookie-parser';
 import fs from 'fs';
 import path from 'path';
@@ -101,8 +102,8 @@ export function createApp() {
   io.use((socket, next) => {
     if (!config.password) return next();
     const cookieHeader = socket.handshake.headers.cookie || '';
-    const match = cookieHeader.match(/auth_token=([^;]+)/);
-    const token = match?.[1] || socket.handshake.auth?.token;
+    const parsed = parseCookie(cookieHeader);
+    const token = parsed.auth_token || socket.handshake.auth?.token;
     if (token && verifyToken(token)) return next();
     return next(new Error('Authentication required'));
   });
