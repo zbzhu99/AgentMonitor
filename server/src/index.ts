@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { config } from './config.js';
-import { createAuthRoutes, requireAuth } from './auth.js';
+import { createAuthRoutes, requireAuth, verifyToken } from './auth.js';
 import { AgentStore } from './store/AgentStore.js';
 import { AgentManager } from './services/AgentManager.js';
 import { MetaAgentManager } from './services/MetaAgentManager.js';
@@ -96,6 +96,16 @@ export function createApp() {
       });
     });
   }
+
+  // Socket.IO auth middleware
+  io.use((socket, next) => {
+    if (!config.password) return next();
+    const cookieHeader = socket.handshake.headers.cookie || '';
+    const match = cookieHeader.match(/auth_token=([^;]+)/);
+    const token = match?.[1] || socket.handshake.auth?.token;
+    if (token && verifyToken(token)) return next();
+    return next(new Error('Authentication required'));
+  });
 
   // Socket.IO
   const terminalService = new TerminalService();

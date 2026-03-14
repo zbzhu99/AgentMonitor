@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-// @ts-ignore - default import works at runtime with tsx
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
 
@@ -71,6 +70,16 @@ function extractToken(req: Request): string | null {
   return null;
 }
 
+/** Verify a JWT token, returns true if valid */
+export function verifyToken(token: string): boolean {
+  try {
+    jwt.verify(token, getJwtSecret());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Middleware: require valid JWT for protected routes */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!config.password) {
@@ -78,8 +87,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     return;
   }
 
-  // Allow auth routes through
-  if (req.path.startsWith('/api/auth/')) {
+  // Allow auth routes through (req.path is relative to mount point /api)
+  if (req.path.startsWith('/auth/')) {
     next();
     return;
   }
