@@ -36,7 +36,19 @@ export function createApp() {
     cors: { origin: '*' },
   });
 
-  app.use(cors({ credentials: true, origin: true }));
+  // In relay mode the dashboard is served from a different origin, so we must
+  // reflect the incoming Origin header (required for credentials: 'include').
+  // In local-only mode we restrict to localhost origins to limit CSRF exposure.
+  const corsOrigin = config.relay.url
+    ? true
+    : (origin: string | undefined, cb: (e: Error | null, allow?: boolean) => void) => {
+        if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+          cb(null, true);
+        } else {
+          cb(null, false);
+        }
+      };
+  app.use(cors({ credentials: true, origin: corsOrigin }));
   app.use(cookieParser());
   app.use(express.json());
 
