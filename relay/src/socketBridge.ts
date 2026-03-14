@@ -1,7 +1,6 @@
+import { randomUUID } from 'crypto';
 import type { Server, Socket } from 'socket.io';
 import type { TunnelManager, TunnelMessage } from './tunnel.js';
-import { verifyToken } from './auth.js';
-import { relayConfig } from './config.js';
 
 /**
  * Bridges dashboard Socket.IO connections with the tunnel to the local machine.
@@ -10,22 +9,23 @@ import { relayConfig } from './config.js';
  * Local Machine → Tunnel (WS) → Relay (Socket.IO) → Dashboard
  */
 export function setupSocketBridge(io: Server, tunnel: TunnelManager): void {
-  // Socket.IO authentication middleware
-  io.use((socket, next) => {
-    if (!relayConfig.password) {
-      return next();
+  // Socket.IO authentication — delegate to local server via tunnel
+  io.use(async (socket, next) => {
+    const cookieHeader = socket.handshake.headers.cookie as string || '';
+    try {
+      const result = await tunnel.sendHttpRequest({
+        type: 'http:request',
+        id: randomUUID(),
+        method: 'GET',
+        path: '/api/auth/check',
+        headers: { cookie: cookieHeader },
+        body: null,
+      });
+      if (result.status === 200) return next();
+      return next(new Error('Authentication required'));
+    } catch {
+      return next(new Error('Tunnel not connected'));
     }
-
-    // Check cookie from handshake headers
-    const cookieHeader = socket.handshake.headers.cookie || '';
-    const match = cookieHeader.match(/relay_token=([^;]+)/);
-    const token = match?.[1] || socket.handshake.auth?.token;
-
-    if (token && verifyToken(token)) {
-      return next();
-    }
-
-    return next(new Error('Authentication required'));
   });
 
   // Handle messages from tunnel (local machine → dashboard)
