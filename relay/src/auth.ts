@@ -5,8 +5,13 @@ import { relayConfig } from './config.js';
 
 const JWT_EXPIRY = '24h';
 
+const jwtSecret = crypto
+  .createHash('sha256')
+  .update(relayConfig.token)
+  .digest('hex');
+
 function getJwtSecret(): string {
-  return crypto.createHash('sha256').update(relayConfig.token).digest('hex');
+  return jwtSecret;
 }
 
 /** Create auth routes: login, logout, session check */

@@ -5,9 +5,13 @@ import { config } from './config.js';
 
 const JWT_EXPIRY = '24h';
 
+const jwtSecret = crypto
+  .createHash('sha256')
+  .update(config.password || 'agent-monitor-local')
+  .digest('hex');
+
 function getJwtSecret(): string {
-  const base = config.password || 'agent-monitor-local';
-  return crypto.createHash('sha256').update(base).digest('hex');
+  return jwtSecret;
 }
 
 /** Create auth routes: login, logout, session check */
