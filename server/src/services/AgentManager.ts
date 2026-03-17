@@ -1,9 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import { EventEmitter } from 'events';
 import { execSync } from 'child_process';
-import { readFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import path, { basename } from 'path';
 import os from 'os';
-import { basename } from 'path';
 import type { Agent, AgentConfig, AgentMessage, AgentStatus } from '../models/Agent.js';
 import { AgentStore } from '../store/AgentStore.js';
 import { AgentProcess, type StreamMessage } from './AgentProcess.js';
@@ -65,10 +65,17 @@ export class AgentManager extends EventEmitter {
       } catch (err) {
         console.warn('[AgentManager] Worktree creation failed, using directory directly:', err);
         worktreePath = agentConfig.directory;
+        if (agentConfig.claudeMd) {
+          writeFileSync(path.join(worktreePath, 'CLAUDE.md'), agentConfig.claudeMd);
+        }
       }
     } else {
       // Not a git repo — work directly in the directory, no worktree needed
       worktreePath = agentConfig.directory;
+      // Write CLAUDE.md directly into the working directory
+      if (agentConfig.claudeMd) {
+        writeFileSync(path.join(worktreePath, 'CLAUDE.md'), agentConfig.claudeMd);
+      }
     }
 
     const agent: Agent = {
