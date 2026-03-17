@@ -60,7 +60,10 @@ export function CreateAgent() {
         setProvider(source.config.provider);
         setName(`${source.name} (copy)`);
         setDirectory(source.config.directory);
-        setPrompt(source.config.prompt);
+        // Use the first user message as the original creation prompt,
+        // since config.prompt gets overwritten on every resume/follow-up.
+        const firstUserMsg = source.messages?.find((m: { role: string }) => m.role === 'user');
+        setPrompt(firstUserMsg?.content ?? source.config.prompt);
         setClaudeMd(source.config.claudeMd || '');
         setAdminEmail(source.config.adminEmail || '');
         setWhatsappPhone(source.config.whatsappPhone || '');
