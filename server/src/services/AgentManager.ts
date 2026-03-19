@@ -358,7 +358,27 @@ export class AgentManager extends EventEmitter {
         agent.contextWindow = { used: inputTokens, total: maxTokens };
       }
 
-      this.updateAgentStatus(agent.id, 'stopped');
+      // Handle error results (e.g. "No conversation found" when resuming expired session)
+      const isError = (resultAny.is_error as boolean) || msg.result?.is_error;
+      if (isError) {
+        const errors = (resultAny.errors as string[]) || [];
+        const errText = errors.join('; ') || 'Claude returned an error result';
+        agent.messages.push({
+          id: uuid(),
+          role: 'system',
+          content: `[Error] ${errText}`,
+          timestamp: Date.now(),
+        });
+        // If session not found, clear the saved sessionId so next resume starts fresh
+        if (errors.some(e => e.includes('No conversation found'))) {
+          agent.sessionId = undefined;
+          delete agent.config.flags.resume;
+        }
+        this.store.saveAgent(agent);
+        this.updateAgentStatus(agent.id, 'error');
+      } else {
+        this.updateAgentStatus(agent.id, 'stopped');
+      }
 
       // In interactive stdin mode, Claude waits for more input after result;
       // kill the process so the agent is truly stopped.
