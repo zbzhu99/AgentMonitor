@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { EventEmitter } from 'events';
 import { execSync } from 'child_process';
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import path, { basename } from 'path';
 import os from 'os';
 import type { Agent, AgentConfig, AgentMessage, AgentStatus } from '../models/Agent.js';
@@ -45,9 +45,15 @@ export class AgentManager extends EventEmitter {
       console.log(`[AgentManager] Created missing directory: ${agentConfig.directory}`);
     }
 
-    // When resuming a previous Claude session, skip worktree creation: Claude
-    // stores sessions by project directory, so running in a worktree subdirectory
-    // would cause "No conversation found" because the path doesn't match.
+    // When resuming a previous Claude session, detect the original working directory
+    // from the session file so we run in the correct directory (avoids "No conversation found").
+    if (agentConfig.flags.resume) {
+      const sessionCwd = this.findSessionCwd(agentConfig.flags.resume, agentConfig.directory);
+      if (sessionCwd && existsSync(sessionCwd)) {
+        console.log(`[AgentManager] Resume: using session cwd: ${sessionCwd}`);
+        agentConfig.directory = sessionCwd;
+      }
+    }
     const skipWorktree = !!agentConfig.flags.resume;
 
     // Create git worktree for isolation — only if the directory is already a git repo
@@ -444,6 +450,48 @@ export class AgentManager extends EventEmitter {
         this.store.saveAgent(agent);
       }
     }
+  }
+
+  /**
+   * Given a Claude session ID, find the original working directory by reading
+   * the session JSONL file. Claude stores sessions under:
+   *   ~/.claude/projects/<encoded-path>/<sessionId>.jsonl
+   * The first message with a `cwd` field contains the original working directory.
+   *
+   * If the session was run inside an existing agent worktree (under projectDir),
+   * that worktree path is returned so the agent can reuse it.
+   * Otherwise, the literal cwd from the session file is returned.
+   */
+  private findSessionCwd(sessionId: string, _projectDir: string): string | undefined {
+    try {
+      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+      if (!existsSync(claudeProjectsDir)) return undefined;
+
+      // Search all project subdirs for the session file
+      let projectDirs: string[];
+      try { projectDirs = readdirSync(claudeProjectsDir); } catch { return undefined; }
+
+      for (const projectSubdir of projectDirs) {
+        const sessionFile = path.join(claudeProjectsDir, projectSubdir, `${sessionId}.jsonl`);
+        if (!existsSync(sessionFile)) continue;
+
+        // Read the file to find a cwd field
+        const content = readFileSync(sessionFile, 'utf-8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const entry = JSON.parse(trimmed);
+            if (entry.cwd && typeof entry.cwd === 'string') {
+              return entry.cwd;
+            }
+          } catch { /* skip malformed lines */ }
+        }
+      }
+    } catch (err) {
+      console.warn('[AgentManager] findSessionCwd error:', err);
+    }
+    return undefined;
   }
 
   private parseMcpServers(mcpConfigPath?: string): string[] {
