@@ -94,6 +94,9 @@ export class AgentProcess extends EventEmitter {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: cleanEnv,
       shell: true,
+      // detached: put shell in its own process group so we can signal the
+      // entire group (shell + claude child) rather than just the shell.
+      detached: true,
     });
 
     this._pid = this.process.pid;
@@ -246,18 +249,28 @@ export class AgentProcess extends EventEmitter {
   }
 
   interrupt(): void {
-    if (this.process) {
-      this.process.kill('SIGINT');
+    if (this.process && this._pid) {
+      try {
+        // Kill entire process group (shell + claude child)
+        process.kill(-this._pid, 'SIGINT');
+      } catch {
+        this.process.kill('SIGINT');
+      }
     }
   }
 
   stop(): void {
-    if (this.process) {
-      this.process.kill('SIGTERM');
+    if (this.process && this._pid) {
+      const pid = this._pid;
+      try {
+        process.kill(-pid, 'SIGTERM');
+      } catch {
+        this.process.kill('SIGTERM');
+      }
       setTimeout(() => {
-        if (this.process) {
-          this.process.kill('SIGKILL');
-        }
+        try {
+          process.kill(-pid, 'SIGKILL');
+        } catch { /* already gone */ }
       }, 5000);
     }
   }
