@@ -74,8 +74,14 @@ export const ja: Record<string, string> = {
 
     // Agent Chat
     'chat.editClaudeMd': 'CLAUDE.mdを編集',
-    'chat.escHint': 'Esc = 中断 · Esc×2 = セッション履歴',
+    'chat.escHint': 'Esc = 中断 · Esc×2 = 会話履歴',
     'chat.interrupted': '[中断されました]',
+    'chat.historyPickerTitle': 'Conversation History',
+    'chat.historyPickerHint': '↑↓ navigate · Enter select · Esc close',
+    'chat.noHistory': 'No conversation history.',
+    'chat.restoreTitle': 'Restore to this turn?',
+    'chat.restoreConversation': 'Restore conversation only',
+    'chat.restoreConversationAndCode': 'Restore conversation + code',
     'chat.sessionPickerTitle': 'セッション履歴',
     'chat.sessionPickerHint': '↑↓ 移動 · Enter 選択 · Esc 閉じる',
     'chat.noSessions': 'セッション履歴がありません。',

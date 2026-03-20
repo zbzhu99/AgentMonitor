@@ -151,6 +151,11 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ content }),
     }),
+  restoreConversation: (id: string, turnIndex: number, restoreCode: boolean) =>
+    request('/agents/' + id + '/restore', {
+      method: 'POST',
+      body: JSON.stringify({ turnIndex, restoreCode }),
+    }),
 
   // Templates
   getTemplates: () => request<Template[]>('/templates'),

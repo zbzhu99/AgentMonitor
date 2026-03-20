@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { EventEmitter } from 'events';
 import { execSync } from 'child_process';
-import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync, statSync } from 'fs';
 import path, { basename } from 'path';
 import os from 'os';
 import type { Agent, AgentConfig, AgentMessage, AgentStatus } from '../models/Agent.js';
@@ -743,5 +743,123 @@ export class AgentManager extends EventEmitter {
       }
     }
     return count;
+  }
+
+  /**
+   * Find the JSONL session file for a given sessionId.
+   * Searches ~/.claude/projects/star/[sessionId].jsonl
+   */
+  private findSessionJsonlPath(sessionId: string): string | undefined {
+    try {
+      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+      if (!existsSync(claudeProjectsDir)) return undefined;
+      let projectDirs: string[];
+      try { projectDirs = readdirSync(claudeProjectsDir); } catch { return undefined; }
+      for (const projectSubdir of projectDirs) {
+        const sessionFile = path.join(claudeProjectsDir, projectSubdir, `${sessionId}.jsonl`);
+        if (existsSync(sessionFile)) return sessionFile;
+      }
+    } catch (err) {
+      console.warn('[AgentManager] findSessionJsonlPath error:', err);
+    }
+    return undefined;
+  }
+
+  /**
+   * Restore the agent's conversation to the state just before turn `turnIndex`.
+   * turnIndex is 0-based among user-type entries in the JSONL file.
+   * If restoreCode is true, also runs `git restore .` in the worktree.
+   * After truncation, the agent is restarted with --resume.
+   */
+  async restoreConversation(agentId: string, turnIndex: number, restoreCode: boolean): Promise<void> {
+    const agent = this.store.getAgent(agentId);
+    if (!agent) throw new Error(`Agent ${agentId} not found`);
+
+    // Stop the running process first
+    const proc = this.processes.get(agentId);
+    if (proc) {
+      proc.stop();
+      this.processes.delete(agentId);
+    }
+
+    // Truncate the JSONL session file
+    if (agent.sessionId) {
+      const jsonlPath = this.findSessionJsonlPath(agent.sessionId);
+      if (jsonlPath) {
+        try {
+          const content = readFileSync(jsonlPath, 'utf-8');
+          const lines = content.split('\n').filter(l => l.trim() !== '');
+          // Find index of the (turnIndex+1)th user-type line
+          // We keep all lines *before* the (turnIndex+1)th user entry
+          let userCount = 0;
+          let cutLine = lines.length; // default: keep all
+          for (let i = 0; i < lines.length; i++) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.type === 'user') {
+                if (userCount === turnIndex) {
+                  // This is the selected turn — keep it and stop
+                  // We want to keep lines[0..i] inclusive (up to and including this user turn)
+                  cutLine = i + 1;
+                  break;
+                }
+                userCount++;
+              }
+            } catch { /* skip malformed */ }
+          }
+          const truncated = lines.slice(0, cutLine).join('\n') + '\n';
+          writeFileSync(jsonlPath, truncated, 'utf-8');
+          console.log(`[AgentManager] Truncated JSONL to line ${cutLine} (turn ${turnIndex})`);
+        } catch (err) {
+          console.warn('[AgentManager] JSONL truncation error:', err);
+        }
+      }
+    }
+
+    // Truncate agent.messages to the Nth user-role message (0-indexed = turnIndex)
+    let userMsgCount = 0;
+    let keepUntil = agent.messages.length;
+    for (let i = 0; i < agent.messages.length; i++) {
+      if (agent.messages[i].role === 'user') {
+        if (userMsgCount === turnIndex) {
+          keepUntil = i + 1;
+          break;
+        }
+        userMsgCount++;
+      }
+    }
+    agent.messages = agent.messages.slice(0, keepUntil);
+
+    // Optionally restore git worktree
+    if (restoreCode && agent.worktreePath) {
+      try {
+        const isGitRepo = (() => {
+          try {
+            execSync('git rev-parse --git-dir', { cwd: agent.worktreePath, stdio: 'pipe' });
+            return true;
+          } catch { return false; }
+        })();
+        if (isGitRepo) {
+          execSync('git restore .', { cwd: agent.worktreePath, stdio: 'pipe' });
+          console.log(`[AgentManager] git restore . in ${agent.worktreePath}`);
+        }
+      } catch (err) {
+        console.warn('[AgentManager] git restore failed:', err);
+      }
+    }
+
+    // Set up for resume
+    if (agent.sessionId && agent.config.provider === 'claude') {
+      agent.config.flags.resume = agent.sessionId;
+    }
+    agent.status = 'stopped';
+    agent.lastActivity = Date.now();
+    this.store.saveAgent(agent);
+    this.emit('agent:status', agentId, 'stopped');
+    this.emit('agent:update', agentId, agent);
+
+    // Restart with --resume so Claude picks up from the truncated session
+    this.updateAgentStatus(agentId, 'running');
+    this.startProcess(agent);
   }
 }

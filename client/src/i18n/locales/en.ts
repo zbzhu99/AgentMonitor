@@ -74,8 +74,14 @@ export const en: Record<string, string> = {
 
     // Agent Chat
     'chat.editClaudeMd': 'Edit CLAUDE.md',
-    'chat.escHint': 'Esc = interrupt · Esc×2 = session history',
+    'chat.escHint': 'Esc = interrupt · Esc×2 = history',
     'chat.interrupted': '[Interrupted]',
+    'chat.historyPickerTitle': 'Conversation History',
+    'chat.historyPickerHint': '↑↓ navigate · Enter select · Esc close',
+    'chat.noHistory': 'No conversation history.',
+    'chat.restoreTitle': 'Restore to this turn?',
+    'chat.restoreConversation': 'Restore conversation only',
+    'chat.restoreConversationAndCode': 'Restore conversation + code',
     'chat.sessionPickerTitle': 'Session History',
     'chat.sessionPickerHint': '↑↓ navigate · Enter select · Esc close',
     'chat.noSessions': 'No previous sessions found.',

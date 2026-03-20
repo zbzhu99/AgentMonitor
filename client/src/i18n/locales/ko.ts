@@ -74,8 +74,14 @@ export const ko: Record<string, string> = {
 
     // Agent Chat
     'chat.editClaudeMd': 'CLAUDE.md 편집',
-    'chat.escHint': 'Esc = 중단 · Esc×2 = 세션 기록',
+    'chat.escHint': 'Esc = 중단 · Esc×2 = 대화 기록',
     'chat.interrupted': '[중단됨]',
+    'chat.historyPickerTitle': 'Conversation History',
+    'chat.historyPickerHint': '↑↓ navigate · Enter select · Esc close',
+    'chat.noHistory': 'No conversation history.',
+    'chat.restoreTitle': 'Restore to this turn?',
+    'chat.restoreConversation': 'Restore conversation only',
+    'chat.restoreConversationAndCode': 'Restore conversation + code',
     'chat.sessionPickerTitle': '세션 기록',
     'chat.sessionPickerHint': '↑↓ 이동 · Enter 선택 · Esc 닫기',
     'chat.noSessions': '이전 세션이 없습니다.',

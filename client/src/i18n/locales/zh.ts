@@ -74,8 +74,14 @@ export const zh: Record<string, string> = {
 
     // Agent Chat
     'chat.editClaudeMd': '编辑 CLAUDE.md',
-    'chat.escHint': 'Esc = 中断 · Esc×2 = 历史会话',
+    'chat.escHint': 'Esc = 中断 · Esc×2 = 历史对话',
     'chat.interrupted': '[已中断]',
+    'chat.historyPickerTitle': '历史对话',
+    'chat.historyPickerHint': '↑↓ 导航 · Enter 选择 · Esc 关闭',
+    'chat.noHistory': '暂无对话历史。',
+    'chat.restoreTitle': '还原到此节点？',
+    'chat.restoreConversation': '只还原对话',
+    'chat.restoreConversationAndCode': '还原对话 + 代码',
     'chat.sessionPickerTitle': '历史会话',
     'chat.sessionPickerHint': '↑↓ 导航 · Enter 选择 · Esc 关闭',
     'chat.noSessions': '未找到历史会话。',

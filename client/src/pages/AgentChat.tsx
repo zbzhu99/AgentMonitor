@@ -59,9 +59,9 @@ export function AgentChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastEscRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [showSessionPicker, setShowSessionPicker] = useState(false);
-  const [sessions, setSessions] = useState<Array<{ id: string; projectPath: string; lastModified: number }>>([]);
-  const [sessionPickerIdx, setSessionPickerIdx] = useState(0);
+  const [showHistoryPicker, setShowHistoryPicker] = useState(false);
+  const [historyPickerIdx, setHistoryPickerIdx] = useState(0);
+  const [historyRestoreTarget, setHistoryRestoreTarget] = useState<number | null>(null);
 
   const addLocalMessage = (content: string, role = 'system') => {
     setLocalMessages((prev) => [...prev, { id: `local-${Date.now()}`, role, content }]);
@@ -211,33 +211,26 @@ export function AgentChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [agent?.messages?.length]);
 
-  // Esc key handler: single = interrupt, double = session history picker
+  // Esc key handler: single = interrupt, double = conversation history picker
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // If session picker is open, navigate or close it
-        if (showSessionPicker) {
-          if (e.key === 'Escape') {
-            setShowSessionPicker(false);
-            lastEscRef.current = 0;
-          }
+        // If history picker or restore confirm is open, close them
+        if (historyRestoreTarget !== null) {
+          setHistoryRestoreTarget(null);
+          return;
+        }
+        if (showHistoryPicker) {
+          setShowHistoryPicker(false);
+          lastEscRef.current = 0;
           return;
         }
         const now = Date.now();
         if (now - lastEscRef.current < 500) {
-          // Double Esc → show session history picker
+          // Double Esc → show conversation history picker
           lastEscRef.current = 0;
-          api.getSessions().then((all) => {
-            // Filter to sessions from the same project directory
-            const dir = agent?.config.directory || '';
-            const encodedDir = dir.replace(/\//g, '-');
-            const filtered = all.filter(s =>
-              s.projectPath === encodedDir || s.projectPath.endsWith(encodedDir)
-            );
-            setSessions(filtered.length > 0 ? filtered : all.slice(0, 20));
-            setSessionPickerIdx(0);
-            setShowSessionPicker(true);
-          });
+          setHistoryPickerIdx(0);
+          setShowHistoryPicker(true);
         } else {
           // Single Esc → interrupt
           lastEscRef.current = now;
@@ -246,28 +239,28 @@ export function AgentChat() {
             addLocalMessage(t('chat.interrupted'));
           }
         }
+        return;
       }
-      // Arrow-key navigation inside session picker
-      if (showSessionPicker) {
+      // Arrow-key navigation inside history picker
+      if (showHistoryPicker && historyRestoreTarget === null) {
+        const userTurns = agent?.messages.filter(m => m.role === 'user') || [];
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          setSessionPickerIdx(i => Math.min(i + 1, sessions.length - 1));
+          setHistoryPickerIdx(i => Math.min(i + 1, userTurns.length - 1));
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          setSessionPickerIdx(i => Math.max(i - 1, 0));
+          setHistoryPickerIdx(i => Math.max(i - 1, 0));
         } else if (e.key === 'Enter') {
           e.preventDefault();
-          const chosen = sessions[sessionPickerIdx];
-          if (chosen) {
-            setShowSessionPicker(false);
-            navigate(`/create?from=${id}&session=${chosen.id}`);
+          if (userTurns[historyPickerIdx]) {
+            setHistoryRestoreTarget(historyPickerIdx);
           }
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [id, agent, showSessionPicker, sessions, sessionPickerIdx, navigate]);
+  }, [id, agent, showHistoryPicker, historyPickerIdx, historyRestoreTarget, navigate, t]);
 
   const handleInputChange = (value: string) => {
     setInput(value);
@@ -817,41 +810,92 @@ export function AgentChat() {
         </div>
       </div>
 
-      {/* Session history picker (double-Esc) */}
-      {showSessionPicker && (
-        <div className="modal-overlay" onClick={() => setShowSessionPicker(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540, maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-header">
-              <span className="modal-title">{t('chat.sessionPickerTitle')}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('chat.sessionPickerHint')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowSessionPicker(false)}>{t('common.cancel')}</button>
-            </div>
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              {sessions.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>{t('chat.noSessions')}</div>
-              ) : sessions.map((s, i) => (
-                <div
-                  key={s.id}
-                  onClick={() => { setShowSessionPicker(false); navigate(`/create?from=${id}&session=${s.id}`); }}
-                  style={{
-                    padding: '10px 16px',
-                    cursor: 'pointer',
-                    background: i === sessionPickerIdx ? 'var(--primary)' : 'transparent',
-                    color: i === sessionPickerIdx ? '#fff' : 'var(--text)',
-                    borderBottom: '1px solid var(--border)',
-                  }}
-                  onMouseEnter={() => setSessionPickerIdx(i)}
-                >
-                  <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{s.id.slice(0, 8)}…</div>
-                  <div style={{ fontSize: 11, color: i === sessionPickerIdx ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)', marginTop: 2 }}>
-                    {s.projectPath.replace(/-/g, '/')} &nbsp;·&nbsp; {new Date(s.lastModified).toLocaleString()}
+      {/* Conversation history picker (double-Esc) */}
+      {showHistoryPicker && (() => {
+        const userTurns = agent?.messages.filter(m => m.role === 'user') || [];
+        return (
+          <div className="modal-overlay" onClick={() => { setShowHistoryPicker(false); setHistoryRestoreTarget(null); }}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: '75vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="modal-header">
+                <span className="modal-title">{t('chat.historyPickerTitle')}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('chat.historyPickerHint')}</span>
+                <button className="btn btn-sm btn-outline" onClick={() => { setShowHistoryPicker(false); setHistoryRestoreTarget(null); }}>{t('common.cancel')}</button>
+              </div>
+
+              {/* Restore confirmation panel */}
+              {historyRestoreTarget !== null && (
+                <div style={{ padding: '14px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>{t('chat.restoreTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {userTurns[historyRestoreTarget]?.content?.slice(0, 120)}{(userTurns[historyRestoreTarget]?.content?.length || 0) > 120 ? '…' : ''}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      className="btn btn-sm"
+                      onClick={async () => {
+                        if (!id || historyRestoreTarget === null) return;
+                        await api.restoreConversation(id, historyRestoreTarget, false);
+                        setShowHistoryPicker(false);
+                        setHistoryRestoreTarget(null);
+                        fetchAgent();
+                      }}
+                    >
+                      {t('chat.restoreConversation')}
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={async () => {
+                        if (!id || historyRestoreTarget === null) return;
+                        await api.restoreConversation(id, historyRestoreTarget, true);
+                        setShowHistoryPicker(false);
+                        setHistoryRestoreTarget(null);
+                        fetchAgent();
+                      }}
+                    >
+                      {t('chat.restoreConversationAndCode')}
+                    </button>
+                    <button className="btn btn-sm btn-outline" onClick={() => setHistoryRestoreTarget(null)}>
+                      {t('common.cancel')}
+                    </button>
                   </div>
                 </div>
-              ))}
+              )}
+
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {!agent?.sessionId && (
+                  <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+                    Note: No session ID — restore will not resume JSONL.
+                  </div>
+                )}
+                {userTurns.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>{t('chat.noHistory')}</div>
+                ) : userTurns.map((msg, i) => (
+                  <div
+                    key={msg.id}
+                    onClick={() => setHistoryRestoreTarget(i)}
+                    style={{
+                      padding: '10px 16px',
+                      cursor: 'pointer',
+                      background: i === historyPickerIdx ? 'var(--primary)' : 'transparent',
+                      color: i === historyPickerIdx ? '#fff' : 'var(--text)',
+                      borderBottom: '1px solid var(--border)',
+                      borderLeft: historyRestoreTarget === i ? '3px solid var(--yellow, #f59e0b)' : '3px solid transparent',
+                    }}
+                    onMouseEnter={() => setHistoryPickerIdx(i)}
+                  >
+                    <div style={{ fontSize: 13, fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {msg.content.slice(0, 80)}{msg.content.length > 80 ? '…' : ''}
+                    </div>
+                    <div style={{ fontSize: 11, color: i === historyPickerIdx ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginTop: 2 }}>
+                      Turn {i + 1} &nbsp;·&nbsp; {new Date(msg.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {editingClaudeMd && (
         <div className="modal-overlay" onClick={() => setEditingClaudeMd(false)}>
