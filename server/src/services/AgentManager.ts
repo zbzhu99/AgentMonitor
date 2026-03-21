@@ -30,6 +30,16 @@ export class AgentManager extends EventEmitter {
     this.whatsappNotifier = whatsappNotifier || new WhatsAppNotifier();
     this.slackNotifier = slackNotifier || new SlackNotifier();
     this.feishuNotifier = feishuNotifier || new FeishuNotifier('', '');
+
+    // On startup, mark any agents that were left in running/waiting_input as
+    // stopped — their processes died when the server restarted.
+    for (const agent of this.store.getAllAgents()) {
+      if (agent.status === 'running' || agent.status === 'waiting_input') {
+        agent.status = 'stopped';
+        agent.pid = undefined;
+        this.store.saveAgent(agent);
+      }
+    }
   }
 
   async createAgent(name: string, agentConfig: AgentConfig): Promise<Agent> {
