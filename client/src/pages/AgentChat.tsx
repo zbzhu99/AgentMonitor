@@ -599,7 +599,7 @@ export function AgentChat() {
       return;
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSend();
     }
@@ -822,44 +822,55 @@ export function AgentChat() {
                 <button className="btn btn-sm btn-outline" onClick={() => { setShowHistoryPicker(false); setHistoryRestoreTarget(null); }}>{t('common.cancel')}</button>
               </div>
 
-              {/* Restore confirmation panel */}
-              {historyRestoreTarget !== null && (
-                <div style={{ padding: '14px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>{t('chat.restoreTitle')}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {userTurns[historyRestoreTarget]?.content?.slice(0, 120)}{(userTurns[historyRestoreTarget]?.content?.length || 0) > 120 ? '…' : ''}
+              {/* Restore options panel (matches local Claude CLI) */}
+              {historyRestoreTarget !== null && (() => {
+                const turnContent = userTurns[historyRestoreTarget]?.content || '';
+                const doRestore = async (restoreCode: boolean, restoreConv: boolean) => {
+                  if (!id || historyRestoreTarget === null) return;
+                  if (restoreCode || restoreConv) {
+                    const result = await api.restoreConversation(id, historyRestoreTarget, restoreCode, restoreConv);
+                    if (result.restoredPrompt) {
+                      setInput(result.restoredPrompt);
+                    }
+                    await fetchAgent();
+                  }
+                  setShowHistoryPicker(false);
+                  setHistoryRestoreTarget(null);
+                  setTimeout(() => inputRef.current?.focus(), 100);
+                };
+                const options = [
+                  { label: t('chat.restoreCodeAndConv'), action: () => doRestore(true, true) },
+                  { label: t('chat.restoreConversation'), action: () => doRestore(false, true) },
+                  { label: t('chat.restoreCodeOnly'), action: () => doRestore(true, false) },
+                  { label: t('chat.summarizeFromHere'), action: () => {
+                    if (id) {
+                      api.sendMessage(id, `/compact Summarize conversation up to this point`);
+                    }
+                    setShowHistoryPicker(false);
+                    setHistoryRestoreTarget(null);
+                  }},
+                  { label: t('chat.neverMind'), action: () => setHistoryRestoreTarget(null) },
+                ];
+                return (
+                  <div style={{ padding: '14px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 48, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Turn {historyRestoreTarget + 1}: {turnContent.slice(0, 100)}{turnContent.length > 100 ? '…' : ''}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {options.map((opt, i) => (
+                        <button
+                          key={i}
+                          className="btn btn-sm btn-outline"
+                          style={{ textAlign: 'left', justifyContent: 'flex-start', fontWeight: 400 }}
+                          onClick={opt.action}
+                        >
+                          {i + 1}. {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      className="btn btn-sm"
-                      onClick={async () => {
-                        if (!id || historyRestoreTarget === null) return;
-                        await api.restoreConversation(id, historyRestoreTarget, false);
-                        setShowHistoryPicker(false);
-                        setHistoryRestoreTarget(null);
-                        fetchAgent();
-                      }}
-                    >
-                      {t('chat.restoreConversation')}
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={async () => {
-                        if (!id || historyRestoreTarget === null) return;
-                        await api.restoreConversation(id, historyRestoreTarget, true);
-                        setShowHistoryPicker(false);
-                        setHistoryRestoreTarget(null);
-                        fetchAgent();
-                      }}
-                    >
-                      {t('chat.restoreConversationAndCode')}
-                    </button>
-                    <button className="btn btn-sm btn-outline" onClick={() => setHistoryRestoreTarget(null)}>
-                      {t('common.cancel')}
-                    </button>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {!agent?.sessionId && (

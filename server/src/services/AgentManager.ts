@@ -776,12 +776,12 @@ export class AgentManager extends EventEmitter {
   }
 
   /**
-   * Restore the agent's conversation to the state just before turn `turnIndex`.
-   * turnIndex is 0-based among user-type entries in the JSONL file.
-   * If restoreCode is true, also runs `git restore .` in the worktree.
-   * After truncation, the agent is restarted with --resume.
+   * Restore the agent's conversation to the state just BEFORE turn `turnIndex`.
+   * Like local Claude CLI: truncates to before the selected user message,
+   * returns that message's text so the client can pre-fill the input box.
+   * Does NOT auto-restart — the user edits the prompt and sends manually.
    */
-  async restoreConversation(agentId: string, turnIndex: number, restoreCode: boolean): Promise<void> {
+  async restoreConversation(agentId: string, turnIndex: number, restoreCode: boolean, restoreConv = true): Promise<string> {
     const agent = this.store.getAgent(agentId);
     if (!agent) throw new Error(`Agent ${agentId} not found`);
 
@@ -792,25 +792,35 @@ export class AgentManager extends EventEmitter {
       this.processes.delete(agentId);
     }
 
-    // Truncate the JSONL session file
-    if (agent.sessionId) {
+    // Find the user message text to return for pre-fill
+    let restoredPrompt = '';
+    let userMsgCount = 0;
+    for (const msg of agent.messages) {
+      if (msg.role === 'user') {
+        if (userMsgCount === turnIndex) {
+          restoredPrompt = msg.content;
+          break;
+        }
+        userMsgCount++;
+      }
+    }
+
+    // Truncate the JSONL session file — keep everything BEFORE the selected user turn
+    if (restoreConv && agent.sessionId) {
       const jsonlPath = this.findSessionJsonlPath(agent.sessionId);
       if (jsonlPath) {
         try {
           const content = readFileSync(jsonlPath, 'utf-8');
           const lines = content.split('\n').filter(l => l.trim() !== '');
-          // Find index of the (turnIndex+1)th user-type line
-          // We keep all lines *before* the (turnIndex+1)th user entry
           let userCount = 0;
-          let cutLine = lines.length; // default: keep all
+          let cutLine = lines.length;
           for (let i = 0; i < lines.length; i++) {
             try {
               const parsed = JSON.parse(lines[i]);
               if (parsed.type === 'user') {
                 if (userCount === turnIndex) {
-                  // This is the selected turn — keep it and stop
-                  // We want to keep lines[0..i] inclusive (up to and including this user turn)
-                  cutLine = i + 1;
+                  // Cut BEFORE this user turn
+                  cutLine = i;
                   break;
                 }
                 userCount++;
@@ -819,26 +829,28 @@ export class AgentManager extends EventEmitter {
           }
           const truncated = lines.slice(0, cutLine).join('\n') + '\n';
           writeFileSync(jsonlPath, truncated, 'utf-8');
-          console.log(`[AgentManager] Truncated JSONL to line ${cutLine} (turn ${turnIndex})`);
+          console.log(`[AgentManager] Truncated JSONL to line ${cutLine} (before turn ${turnIndex})`);
         } catch (err) {
           console.warn('[AgentManager] JSONL truncation error:', err);
         }
       }
     }
 
-    // Truncate agent.messages to the Nth user-role message (0-indexed = turnIndex)
-    let userMsgCount = 0;
-    let keepUntil = agent.messages.length;
-    for (let i = 0; i < agent.messages.length; i++) {
-      if (agent.messages[i].role === 'user') {
-        if (userMsgCount === turnIndex) {
-          keepUntil = i + 1;
-          break;
+    // Truncate agent.messages to BEFORE the Nth user-role message
+    if (restoreConv) {
+      userMsgCount = 0;
+      let keepUntil = agent.messages.length;
+      for (let i = 0; i < agent.messages.length; i++) {
+        if (agent.messages[i].role === 'user') {
+          if (userMsgCount === turnIndex) {
+            keepUntil = i;
+            break;
+          }
+          userMsgCount++;
         }
-        userMsgCount++;
       }
+      agent.messages = agent.messages.slice(0, keepUntil);
     }
-    agent.messages = agent.messages.slice(0, keepUntil);
 
     // Optionally restore git worktree
     if (restoreCode && agent.worktreePath) {
@@ -858,7 +870,7 @@ export class AgentManager extends EventEmitter {
       }
     }
 
-    // Set up for resume
+    // Prepare for resume but don't auto-start — user will send from input
     if (agent.sessionId && agent.config.provider === 'claude') {
       agent.config.flags.resume = agent.sessionId;
     }
@@ -868,8 +880,6 @@ export class AgentManager extends EventEmitter {
     this.emit('agent:status', agentId, 'stopped');
     this.emit('agent:update', agentId, agent);
 
-    // Restart with --resume so Claude picks up from the truncated session
-    this.updateAgentStatus(agentId, 'running');
-    this.startProcess(agent);
+    return restoredPrompt;
   }
 }
